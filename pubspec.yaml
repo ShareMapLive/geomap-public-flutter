@@ -1,0 +1,57 @@
+name: geomap_package
+description: A Flutter package for displaying geomaps with Google Maps and Flutter Map, supporting both mobile and web platforms with GetX state management.
+version: 1.0.1
+homepage: https://github.com/ShareMapLive/geomap-public-flutter
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: ^4.6.5
+  google_maps_flutter: ^2.10.1
+  widget_to_marker: ^1.0.6
+  google_maps_flutter_web: ^0.5.12
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  meta: ^1.8.0
+  http: ^1.3.0
+  intl: ^0.20.2
+  pointer_interceptor: ^0.10.1+2
+  jwt_decoder: ^2.0.1
+  url_launcher: ^6.3.1
+  geolocator: ^14.0.2
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - pubspec.yaml
+    - assets/
+    - images/
+  fonts:
+    - family: PoppinsRegular
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+    - family: PoppinsExtraBold
+      fonts:
+        - asset: assets/fonts/Poppins-ExtraBold.ttf
+    - family: RobotoRegular
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+    - family: RobotoBold
+      fonts:
+        - asset: assets/fonts/Roboto-Bold.ttf
+    - family: RobotoMedium
+      fonts:
+        - asset: assets/fonts/Roboto-Medium.ttf
+    - family:  NotoColorEmoji
+      fonts:
+        - asset: assets/fonts/NotoColorEmoji-Regular.ttf
