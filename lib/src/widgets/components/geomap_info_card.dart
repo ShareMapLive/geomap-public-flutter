@@ -41,10 +41,17 @@ class GeoMapInfoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: fontConfig.bodyStyle(color: Colors.grey[600])),
-          SelectableText(value, style: fontConfig.bodyStyle(fontWeight: FontWeight.w500)),
+          Text("$label: ", style: fontConfig.bodyStyle(color: Colors.grey[600])),
+          Expanded(
+            child: Text(
+              value,
+              style: fontConfig.bodyStyle(fontWeight: FontWeight.w500),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

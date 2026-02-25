@@ -9,6 +9,10 @@ class MapGeoModel {
   String? projectId;
   String? bizSharemapUid;
   String? passCode;
+
+  /// Dataset code used to call dataset tracking API
+  String? datasetCode;
+
   List<NotificationManager>? notificationManager;
   List<UserJoinGeoMap>? userJoinGeoMap;
   TrackingVehicleConfiguration? trackingVehicleConfiguration;
@@ -26,6 +30,7 @@ class MapGeoModel {
     this.projectId,
     this.bizSharemapUid,
     this.passCode,
+    this.datasetCode,
     this.notificationManager,
     this.userJoinGeoMap,
     this.trackingVehicleConfiguration,
@@ -41,6 +46,7 @@ class MapGeoModel {
       passCode: json['passCodeGeoMap'],
       radius: json['radius'],
       name: json['name'],
+      datasetCode: json['datasetCode'],
       notificationManager: json['notificationManager'] != null
           ? List<NotificationManager>.from(
               json['notificationManager'].map((x) => NotificationManager.fromJson(x)))
@@ -69,6 +75,7 @@ class MapGeoModel {
     data['passCodeGeoMap'] = passCode;
     data['radius'] = radius;
     data['name'] = name;
+    data['datasetCode'] = datasetCode;
     if (notificationManager != null) {
       data['notificationManager'] = notificationManager!.map((v) => v.toJson()).toList();
     }
@@ -202,52 +209,34 @@ class UserJoinGeoMap {
 }
 
 class TrackingVehicleConfiguration {
-  List<Map<String, dynamic>>? listConfigurationAPI;
-  num? expiredTime;
-  String? passCodeGeoMap;
-  String? key;
-  String? value;
-  num? automaticRunTime;
+  /// Type of avatar option (e.g., 'image', 'icon')
   String? typeAvatarOption;
+
+  /// Value for the avatar option (e.g., URL or icon name)
   String? valueAvatarOption;
 
+  /// Passcode for the geomap
+  String? passCodeGeoMap;
+
   TrackingVehicleConfiguration({
-    this.listConfigurationAPI,
-    this.expiredTime,
-    this.passCodeGeoMap,
-    this.key,
-    this.value,
-    this.automaticRunTime,
     this.typeAvatarOption,
     this.valueAvatarOption,
+    this.passCodeGeoMap,
   });
 
   factory TrackingVehicleConfiguration.fromJson(Map<String, dynamic> json) {
     return TrackingVehicleConfiguration(
-      listConfigurationAPI: json['listConfigurationAPI'] != null
-          ? List<Map<String, dynamic>>.from(
-              json['listConfigurationAPI'].map((x) => Map<String, dynamic>.from(x)))
-          : null,
-      expiredTime: json['expiredTime'],
-      passCodeGeoMap: json['passCodeGeoMap'],
-      key: json['key'],
-      value: json['value'],
-      automaticRunTime: json['automaticRunTime'],
       typeAvatarOption: json['typeAvatarOption'],
       valueAvatarOption: json['valueAvatarOption'],
+      passCodeGeoMap: json['passCodeGeoMap'],
     );
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
-    data['listConfigurationAPI'] = listConfigurationAPI;
-    data['expiredTime'] = expiredTime;
-    data['passCodeGeoMap'] = passCodeGeoMap;
-    data['key'] = key;
-    data['value'] = value;
-    data['automaticRunTime'] = automaticRunTime;
     data['typeAvatarOption'] = typeAvatarOption;
     data['valueAvatarOption'] = valueAvatarOption;
+    data['passCodeGeoMap'] = passCodeGeoMap;
     return data;
   }
 }
