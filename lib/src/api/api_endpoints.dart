@@ -17,13 +17,19 @@ class ApiEndpoints {
   /// Endpoint for getting geomap details
   String get detailMapGeo => '$baseUrl/geo-map/public/detail';
 
-  /// Endpoint for getting tracing list by time range
-  String get tracingListByTimeRange =>
-      '$baseUrl/geomap-tracing/public/list-by-time-range';
-
   /// Endpoint for getting public geofencing list
   String get publicGeofencingList => '$baseUrl/geofencing-json/public/list';
 
   /// Endpoint for getting public geofencing polygon data
   String get publicGeofencingPolygon => '$baseUrl/geofencing/public/polygon';
+
+  /// Endpoint for getting dataset detail by code (used to fetch automaticRunTime)
+  /// GET /api/sharemap-dataset/public/detail/{code}
+  String get datasetDetail => '$baseUrl/sharemap-dataset/public/detail';
+
+  /// Endpoint for getting dataset tracking list by time range
+  /// Params: key (datasetCode), startTime, endTime, objectId (userID), page, limit
+  String get datasetTrackingListByTimeRange =>
+      '$baseUrl/sharemap-dataset-tracking/public/list-by-time-range';
 }
+

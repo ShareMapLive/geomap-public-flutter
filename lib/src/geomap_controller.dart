@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart' as latlong;
 
 import 'api/api_config.dart';
 import 'api/api_service.dart';
+import 'models/dataset_model.dart';
 import 'models/geofencing_model.dart';
 import 'models/geomap_config.dart';
 import 'models/geomap_type.dart';
@@ -115,6 +116,9 @@ class GeoMapController extends GetxController {
 
   /// Timer for automatic refresh of driver tracing data
   Timer? _driverTracingRefreshTimer;
+
+  /// automaticRunTime fetched from dataset detail API (in minutes)
+  int? _datasetAutoRunTime;
 
   /// Check if driver data is available (token has driver UUIDs)
   bool get hasDriverData => _driverUuids.isNotEmpty;
@@ -457,6 +461,12 @@ class GeoMapController extends GetxController {
       // Step 2: Load GeoMap info
       await _loadGeoMapInfo(geoMapCode);
 
+      // Step 2.5: Load dataset detail to get automaticRunTime (if datasetCode available)
+      // Only needed for viewer role to refresh tracing data
+      if (config.role != GeoMapRole.driver) {
+        await _loadDatasetDetail();
+      }
+
       // Step 3: Load driver tracing data (only if not in driver mode)
       if (config.role != GeoMapRole.driver) {
         await _loadDriverTracingData(geoMapCode);
@@ -466,7 +476,6 @@ class GeoMapController extends GetxController {
       await _loadStopList(geoMapCode);
 
       // Step 5: Load routes, polygons, and check-in points in parallel
-
       await _loadRoutesBetweenStops();
       await _loadPolygonsIfNeeded();
 
@@ -478,7 +487,6 @@ class GeoMapController extends GetxController {
       if (config.role != GeoMapRole.driver) {
         _startDriverTracingRefreshTimer(geoMapCode);
       }
-
 
     } finally {
       _isLoading.value = false;
@@ -510,6 +518,30 @@ class GeoMapController extends GetxController {
       print('Loaded GeoMap info: ${detail.name}');
     }
   }
+
+  /// Load dataset detail using the datasetCode from geoMapInfo
+  /// This fetches the automaticRunTime for the tracing refresh timer
+  Future<void> _loadDatasetDetail() async {
+    final datasetCode = _geoMapInfo.value?.datasetCode;
+    if (datasetCode == null || datasetCode.isEmpty) {
+      print('loadDatasetDetail: No datasetCode available');
+      _datasetAutoRunTime = null;
+      return;
+    }
+
+    print('Loading dataset detail for code: $datasetCode');
+    final dataset = await _apiService.getDatasetDetail(datasetCode);
+
+    if (dataset != null) {
+      _datasetAutoRunTime = dataset.automaticRunTime?.toInt();
+      print('Loaded dataset detail. automaticRunTime: $_datasetAutoRunTime');
+    } else {
+      _datasetAutoRunTime = null;
+      print('Failed to load dataset detail or it returned null');
+    }
+  }
+
+
 
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 14: JWT TOKEN PARSING
@@ -585,11 +617,20 @@ class GeoMapController extends GetxController {
     final startTime = _getStartTimeFromTokenDate();
     final endTime = _getEndTimeFromTokenDate();
 
-    print('Loading driver tracing data for UUIDs: $_driverUuids');
+    // Get datasetCode from the loaded geomap info
+    final datasetCode = _geoMapInfo.value?.datasetCode;
 
-    await _loadTracingByTimeRange(
-      geoMapCode: geoMapCode,
-      uuid: _driverUuids[0],
+    if (datasetCode == null || datasetCode.isEmpty) {
+      // datasetCode chưa có -> chỉ hiển thị points, không load tracing, không crash
+      print('datasetCode is null, skipping dataset tracking load');
+      return;
+    }
+
+    print('Loading dataset tracking data for datasetCode: $datasetCode, uuid: ${_driverUuids[0]}');
+
+    await _loadDatasetTrackingByTimeRange(
+      datasetCode: datasetCode,
+      objectId: _driverUuids[0],
       startTime: startTime,
       endTime: endTime,
     );
@@ -598,26 +639,24 @@ class GeoMapController extends GetxController {
     await _createDriverMarkersFromTracingData();
   }
 
-  /// Load tracing records by time range
-  Future<void> _loadTracingByTimeRange({
-    required String geoMapCode,
-    String? detect,
-    String? userID,
+  /// Load dataset tracking records by time range (new API)
+  Future<void> _loadDatasetTrackingByTimeRange({
+    required String datasetCode,
+    String? objectId,
     num? startTime,
     num? endTime,
+    int? page,
     int? limit,
-    String? uuid,
   }) async {
-    if (geoMapCode.isEmpty) return;
+    if (datasetCode.isEmpty) return;
 
-    final listTracingModel = await _apiService.getListTracingByTimeRange(
-      geoMapCode: geoMapCode,
-      detect: detect,
-      userID: userID,
+    final listTracingModel = await _apiService.getDatasetTrackingListByTimeRange(
+      key: datasetCode,
+      objectId: objectId,
       startTime: startTime,
       endTime: endTime,
+      page: page,
       limit: limit,
-      uuid: uuid,
     );
 
     if (listTracingModel != null && listTracingModel.geoMapTracing != null) {
@@ -637,13 +676,18 @@ class GeoMapController extends GetxController {
       return;
     }
 
+    final datasetCode = _geoMapInfo.value?.datasetCode;
+    if (datasetCode == null || datasetCode.isEmpty) {
+      // Nếu không có datasetCode thì không cần refresh timer
+      print('No datasetCode, skipping refresh timer');
+      return;
+    }
+
     _driverTracingRefreshTimer?.cancel();
 
-    final autoRunTime = _geoMapInfo
-            .value?.trackingVehicleConfiguration?.automaticRunTime
-            ?.toInt() ??
-        1;
-    print('Starting driver tracing refresh timer: $autoRunTime minutes');
+    // Ưu tiên dùng automaticRunTime từ dataset detail, fallback về 1 phút
+    final autoRunTime = _datasetAutoRunTime ?? 1;
+    print('Starting driver tracing refresh timer: $autoRunTime minutes (datasetCode: $datasetCode)');
 
     _driverTracingRefreshTimer = Timer.periodic(
       Duration(minutes: autoRunTime),
@@ -718,8 +762,11 @@ class GeoMapController extends GetxController {
         }
 
         if (driverPath.length > 1) {
+          print('Created driver path with ${driverPath.length} points. Adding to routeCoordinates.');
           routeCoordinates.add(driverPath);
           _processDriverPathPolylines(routeCoordinates);
+        } else {
+          print('Driver path only has ${driverPath.length} points, not enough to draw a line.');
         }
       }
     } else {

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../models/api_response.dart';
+import '../models/dataset_model.dart';
 import '../models/map_geo_model.dart';
 import '../models/list_tracing_model.dart';
 import '../models/route_model.dart';
@@ -174,26 +175,44 @@ class ApiService extends GetxService {
     }
   }
 
-  /// Get the list of tracing records by time range
-  Future<ListTracingModel?> getListTracingByTimeRange({
-    required String geoMapCode,
-    String? detect,
-    String? userID,
+  /// Get dataset detail by code (used to fetch automaticRunTime)
+  Future<DatasetModel?> getDatasetDetail(String datasetCode) async {
+    try {
+      final response = await _callGetAPI(
+        httpUrl: '${_endpoints.datasetDetail}/$datasetCode',
+      );
+
+      if (response != null && response.isSuccess()) {
+        if (response.data != null) {
+          return DatasetModel.fromJson(response.data);
+        }
+      } else if (response != null) {
+        print('API Error getDatasetDetail: ${response.message}, Code: ${response.code}');
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching dataset detail: $e');
+      return null;
+    }
+  }
+
+  /// Get dataset tracking list by time range
+  /// [key] is the datasetCode
+  /// [objectId] is the userID
+  Future<ListTracingModel?> getDatasetTrackingListByTimeRange({
+    required String key,
+    String? objectId,
     num? startTime,
     num? endTime,
+    int? page,
     int? limit,
-    String? uuid,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
-      queryParams['geoMapCode'] = geoMapCode;
+      queryParams['key'] = key;
 
-      if (detect != null && detect != "all") {
-        queryParams['detect'] = detect;
-      }
-
-      if (userID != null && userID != "all") {
-        queryParams['userId'] = userID;
+      if (objectId != null && objectId.isNotEmpty) {
+        queryParams['objectId'] = objectId;
       }
 
       if (startTime != null) {
@@ -204,31 +223,30 @@ class ApiService extends GetxService {
         queryParams['endTime'] = endTime.toString();
       }
 
+      if (page != null) {
+        queryParams['page'] = page.toString();
+      }
+
       if (limit != null) {
         queryParams['limit'] = limit.toString();
       }
 
-      if (uuid != null && uuid != "all" && uuid != "") {
-        queryParams['userId'] = uuid;
-      }
-
       final queryString = Uri(queryParameters: queryParams).query;
-      final url = '${_endpoints.tracingListByTimeRange}?$queryString';
+      final url = '${_endpoints.datasetTrackingListByTimeRange}?$queryString';
 
       final response = await _callGetAPI(httpUrl: url);
 
       if (response != null && response.isSuccess()) {
         if (response.data != null) {
-          // Parse using ListTracingModel
           final listTracingModel = ListTracingModel.fromJson(response.data);
           return listTracingModel;
         }
       } else if (response != null) {
-        print('API Error: ${response.message}, Code: ${response.code}');
+        print('API Error getDatasetTrackingListByTimeRange: ${response.message}, Code: ${response.code}');
       }
       return null;
     } catch (e) {
-      print('Error fetching tracing list: $e');
+      print('Error fetching dataset tracking list: $e');
       return null;
     }
   }
