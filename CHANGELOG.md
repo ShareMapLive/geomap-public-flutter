@@ -1,4 +1,22 @@
+## 2.0.0
+
+### BREAKING CHANGES
+* **New Tracking Engine**: Migrated completely to the Dataset Tracking API for improved accuracy and reliability.
+* **Response Format Change**: Replaced `geoMapTracing` key with `DatasetTracking` in API responses.
+* **Model Cleanup**: Removed deprecated fields (`listConfigurationAPI`, `expiredTime`, `key`, `value`, `automaticRunTime`) from `TrackingVehicleConfiguration`.
+* **API Removal**: Removed the legacy `getListTracingByTimeRange` method from `ApiService`.
+
+### Added
+* Support for dynamic `automaticRunTime` fetched directly from the Dataset detail.
+* Added `datasetCode` to `MapGeoModel` to support multi-dataset tracking.
+* New `DatasetModel` to handle dataset-specific configurations.
+
+### Improved & Fixed
+* **UI Stability**: Fixed text overflow issues in `GeoMapInfoCard` with smart ellipsis (max 2 lines) and improved wrapping.
+* **Performance**: Optimized the data refresh sequence to avoid redundant API calls.
+
 ## 1.0.0
+
 
 - Initial public release
 - Support for Google Maps on mobile and web platforms

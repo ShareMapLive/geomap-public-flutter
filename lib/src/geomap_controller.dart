@@ -41,7 +41,7 @@ class GeoMapController extends GetxController {
   // ════════════════════════════════════════════════════════════════════════════
 
   /// The package version
-  static final RxString _version = '1.0.4'.obs;
+  static final RxString _version = '2.0.0'.obs;
   static String get version => _version.value;
 
   /// Completer for tracking initialization status
