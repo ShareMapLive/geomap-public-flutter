@@ -702,12 +702,12 @@ class GeoMapController extends GetxController {
 
       // 2. TODO: TESTING ONLY — Force specific range for testing if needed
       // To disable test overrides, comment out the lines below
-      const int testStartTime = 1742403600000; // 2025-03-20
-      const int testEndTime = 1742835600000; // 2025-03-25
-      _log(
-          'TEST OVERRIDE ACTIVE - Forcing range: ${DateTime.fromMillisecondsSinceEpoch(testStartTime)} to ${DateTime.fromMillisecondsSinceEpoch(testEndTime)}');
-      _tokenStartTime.value = testStartTime;
-      _tokenEndTime.value = testEndTime;
+      // const int testStartTime = 1742403600000; // 2025-03-20
+      // const int testEndTime = 1742835600000; // 2025-03-25
+      // _log(
+      //     'TEST OVERRIDE ACTIVE - Forcing range: ${DateTime.fromMillisecondsSinceEpoch(testStartTime)} to ${DateTime.fromMillisecondsSinceEpoch(testEndTime)}');
+      // _tokenStartTime.value = testStartTime;
+      // _tokenEndTime.value = testEndTime;
 
       _log('Final driver UUIDs: $_driverUuids');
       _log(

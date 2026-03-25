@@ -58,13 +58,18 @@ class GeoMapDriverInfoCard extends StatelessWidget {
           phone: firstTracing.extraData?.phone,
           address: firstTracing.extraData?.address,
         );
-      } else if (tracingList?.geoMap?.userJoinGeoMap != null &&
-          tracingList!.geoMap!.userJoinGeoMap!.isNotEmpty) {
-        final relevantUsers = tracingList.geoMap!.userJoinGeoMap!
-            .where((u) => controller.userUuids.contains(u.userId))
-            .toList();
-        if (relevantUsers.isNotEmpty) {
-          user = relevantUsers.first;
+      } else {
+        // Fallback: use users from tracingList.geoMap (if available) or controller.geoMapInfo
+        final sourceUsers = tracingList?.geoMap?.userJoinGeoMap ??
+            controller.geoMapInfo?.userJoinGeoMap;
+
+        if (sourceUsers != null && sourceUsers.isNotEmpty) {
+          final relevantUsers = sourceUsers
+              .where((u) => controller.userUuids.contains(u.userId))
+              .toList();
+          if (relevantUsers.isNotEmpty) {
+            user = relevantUsers.first;
+          }
         }
       }
 
