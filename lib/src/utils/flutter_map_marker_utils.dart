@@ -7,7 +7,6 @@ import 'map_colors.dart';
 
 /// Utility class for creating Flutter Map markers, circles, polygons, and polylines
 class FlutterMapMarkerUtils {
-
   /// Build polygon for Flutter Map
   static Polygon buildGeofencingPolygon(
     PublicGeofencingModel item,

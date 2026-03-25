@@ -11,6 +11,8 @@ export 'src/models/geofencing_model.dart';
 export 'src/models/tracing_model.dart';
 export 'src/models/route_model.dart';
 export 'src/models/api_response.dart';
+export 'src/models/geomap_info_card_model.dart';
+export 'src/models/geomap_driver_info_card_model.dart';
 export 'src/api/api_config.dart';
 export 'src/utils/google_map_marker_utils.dart';
 export 'src/utils/flutter_map_marker_utils.dart';

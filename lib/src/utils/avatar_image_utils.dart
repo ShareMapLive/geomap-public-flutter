@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 class AvatarImageUtils extends StatelessWidget {
   const AvatarImageUtils(
-      {Key? key, required this.image, required this.sizeImage, this.name, this.color})
-      : super(key: key);
+      {super.key,
+      required this.image,
+      required this.sizeImage,
+      this.name,
+      this.color});
   final String? image;
   final double? sizeImage;
   final String? name;
@@ -13,46 +16,48 @@ class AvatarImageUtils extends StatelessWidget {
   Widget build(BuildContext context) {
     return image != null && image!.isNotEmpty
         ? Stack(
-      alignment: Alignment.center,
-      children: [
-        SizedBox(
-          width: sizeImage!,
-          height: sizeImage!,
-          child: const CircleAvatar(
-            radius: 35,
-            backgroundColor: Colors.transparent,
-            backgroundImage: AssetImage(
-              "images/image_no_avatar.jpg",
-            ),
-          ),
-        ),
-        SizedBox(
-            width: sizeImage!.toInt() + 2,
-            height: sizeImage!.toInt() + 2,
-            child:
-            CircleAvatar(
-              backgroundColor: Colors.transparent,
-              backgroundImage: Image.network(errorBuilder:
-                  (BuildContext context, Object exception,
-                  StackTrace? stackTrace) {
-                return const SizedBox.shrink();
-              }, image!)
-                  .image,
-            )),
-      ],
-    )
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: sizeImage!,
+                height: sizeImage!,
+                child: const CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Colors.transparent,
+                  backgroundImage: AssetImage(
+                    "images/image_no_avatar.jpg",
+                  ),
+                ),
+              ),
+              SizedBox(
+                  width: sizeImage!.toInt() + 2,
+                  height: sizeImage!.toInt() + 2,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.transparent,
+                    backgroundImage: Image.network(errorBuilder:
+                            (BuildContext context, Object exception,
+                                StackTrace? stackTrace) {
+                      return const SizedBox.shrink();
+                    }, image!)
+                        .image,
+                  )),
+            ],
+          )
         : SizedBox(
-        width: sizeImage,
-        height: sizeImage,
-        child: DefaultAvatar(name:name ?? "U",color: color ?? Colors.blueGrey.shade400,)
-    );
+            width: sizeImage,
+            height: sizeImage,
+            child: DefaultAvatar(
+              name: name ?? "U",
+              color: color ?? Colors.blueGrey.shade400,
+            ));
   }
 }
+
 class DefaultAvatar extends StatelessWidget {
   final String name;
   final Color color;
 
-  DefaultAvatar({required this.name,required this.color});
+  const DefaultAvatar({super.key, required this.name, required this.color});
 
   String getInitial() {
     String trimmed = name.trim();
@@ -77,62 +82,64 @@ class DefaultAvatar extends StatelessWidget {
       backgroundColor: color,
       child: Text(
         getInitial(),
-        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
       ),
     );
   }
 }
+
 class AvatarImageWithRadius extends StatelessWidget {
   const AvatarImageWithRadius(
-      {Key? key, required this.image, required this.sizeImage})
-      : super(key: key);
+      {super.key, required this.image, required this.sizeImage});
   final String? image;
   final double? sizeImage;
 
   @override
   Widget build(BuildContext context) {
     return image != null && image!.isNotEmpty
-        ? Stack(alignment: Alignment.center,
-      children: [
-        Container(
-          width: sizeImage, height: sizeImage,
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
-            image: DecorationImage(
-              image: AssetImage("images/image_no_avatar.jpg"),
-              fit: BoxFit.cover,
-            ),
-          ),
-          // other widget properties
-        ),
-        Container(
-          width: sizeImage!.toInt()+2, height: sizeImage!.toInt()+2,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            image: DecorationImage(
-              image: NetworkImage(
-                image!,
+        ? Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: sizeImage, height: sizeImage,
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                  image: DecorationImage(
+                    image: AssetImage("images/image_no_avatar.jpg"),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                // other widget properties
               ),
-              onError: (error, stackTrace) {
-                // LogUtils.log('Image load failed: ','$error');
-              },
-              fit: BoxFit.cover,
-            ),
-          ),
-          // other widget properties
-        ),
-      ],
-    )
+              Container(
+                width: sizeImage!.toInt() + 2, height: sizeImage!.toInt() + 2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  image: DecorationImage(
+                    image: NetworkImage(
+                      image!,
+                    ),
+                    onError: (error, stackTrace) {
+                      // LogUtils.log('Image load failed: ','$error');
+                    },
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                // other widget properties
+              ),
+            ],
+          )
         : Container(
-      width: sizeImage, height: sizeImage,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
-        image: DecorationImage(
-          image: AssetImage("images/image_no_avatar.jpg"),
-          fit: BoxFit.cover,
-        ),
-      ),
-      // other widget properties
-    );
+            width: sizeImage, height: sizeImage,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              image: DecorationImage(
+                image: AssetImage("images/image_no_avatar.jpg"),
+                fit: BoxFit.cover,
+              ),
+            ),
+            // other widget properties
+          );
   }
 }

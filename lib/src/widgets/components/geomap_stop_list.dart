@@ -20,7 +20,6 @@ class GeoMapStopList extends StatelessWidget {
       final mapDetail = controller.mapGeoDetail;
       final geos = controller.publicGeofencingList;
 
-
       List<dynamic> stops = [];
       bool isPolygon = mapDetail?.type?.toLowerCase() == 'polygon';
 
@@ -78,22 +77,21 @@ class GeoMapStopList extends StatelessWidget {
 
                 bool isLast = index == stops.length - 1;
 
-                // Determine stop state based on userCheckIn
-                // If hasCheckIn: active (green)
-                // Otherwise: inactive (grey)
-                bool isActive =
-                    hasCheckIn || controller.config.role == GeoMapRole.driver;
+                // Green when: has check-in, OR viewer role (see full route), OR driver role
+                bool isActive = hasCheckIn ||
+                    controller.config.role == GeoMapRole.viewer ||
+                    controller.config.role == GeoMapRole.driver;
                 Color borderColor;
                 Color backgroundColor;
                 Color textColor;
 
                 if (isActive) {
-                  // Active stop (with check-in or forced by driver role)
+                  // Active stop – green indicator
                   borderColor = Colors.green;
                   backgroundColor = Colors.green;
                   textColor = Colors.white;
                 } else {
-                  // Inactive stop - Minimal style (no background, no border)
+                  // Inactive stop – minimal style
                   borderColor = Colors.transparent;
                   backgroundColor = Colors.transparent;
                   textColor = Colors.grey[600]!;

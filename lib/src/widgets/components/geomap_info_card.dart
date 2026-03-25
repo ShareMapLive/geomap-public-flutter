@@ -2,16 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../geomap_controller.dart';
 import '../../models/font_config.dart';
+import '../../models/geomap_info_card_model.dart';
 import 'card_container.dart';
 
 class GeoMapInfoCard extends StatelessWidget {
   final GeoMapController controller;
   final FontConfig fontConfig;
 
+  /// Optional model to override the card display values.
+  /// When a field in [infoCardModel] is non-null it replaces the default
+  /// value resolved from the controller/API.
+  final GeomapInfoCardModel? infoCardModel;
+
   const GeoMapInfoCard({
     super.key,
     required this.controller,
     required this.fontConfig,
+    this.infoCardModel,
   });
 
   @override
@@ -20,18 +27,31 @@ class GeoMapInfoCard extends StatelessWidget {
       final mapDetail = controller.mapGeoDetail;
       if (mapDetail == null) return const SizedBox.shrink();
 
+      final title = infoCardModel?.title ?? 'Bản đồ';
+      final mapName = infoCardModel?.mapName ?? mapDetail.description ?? '-';
+      final mapCode = infoCardModel?.mapCode ?? mapDetail.geoMapCode ?? '-';
+      final dateDisplay =
+          infoCardModel?.dateDisplay ?? controller.jwtDateFormatted;
+
       return CardContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("GeoMap", style: fontConfig.subtitleStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _buildRow("Tên", mapDetail.name ?? "-", fontConfig),
-            _buildRow("Mã", mapDetail.geoMapCode ?? "-", fontConfig),
-            _buildRow("Loại", mapDetail.type ?? "-", fontConfig),
-            _buildRow("Bán kính", "${mapDetail.radius ?? '-'}m", fontConfig),
-            _buildRow("Ngày dữ liệu", controller.jwtDateFormatted, fontConfig),
-          ],
+        child: SelectionArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: fontConfig.subtitleStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              _buildRow(infoCardModel?.mapNameLabel ?? 'Tên bản đồ', mapName,
+                  fontConfig),
+              if (infoCardModel?.description != null)
+                _buildRow(infoCardModel?.descriptionLabel ?? 'Mô tả',
+                    infoCardModel!.description!, fontConfig),
+              _buildRow(infoCardModel?.mapCodeLabel ?? 'Mã bản đồ', mapCode,
+                  fontConfig) ,
+              _buildRow(infoCardModel?.dateDisplayLabel ?? 'Ngày', dateDisplay,
+                  fontConfig),
+            ],
+          ),
         ),
       );
     });
@@ -43,7 +63,8 @@ class GeoMapInfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("$label: ", style: fontConfig.bodyStyle(color: Colors.grey[600])),
+          Text('$label: ',
+              style: fontConfig.bodyStyle(color: Colors.grey[600])),
           Expanded(
             child: Text(
               value,

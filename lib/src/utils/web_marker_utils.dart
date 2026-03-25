@@ -10,6 +10,7 @@ import '../models/geofencing_model.dart';
 import '../models/map_geo_model.dart';
 import '../models/tracing_model.dart';
 import 'map_colors.dart';
+import 'marker_z_indexes.dart';
 import 'triangle_painter.dart';
 
 const double textSizeSMedium = 14.0;
@@ -17,7 +18,7 @@ const double textSizeSmall = 12.0;
 
 /// Utility class for creating markers with web-optimized sizes
 class WebMarkerUtils {
-    /// Build current location marker for web (Blue dot)
+  /// Build current location marker for web (Blue dot)
   static Future<google_maps.Marker> buildCurrentLocationMarker({
     required double lat,
     required double lng,
@@ -52,7 +53,7 @@ class WebMarkerUtils {
 
     final double scale =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(24, 24);
+    const logicalSize = Size(24, 24);
     final imageSize =
         Size(logicalSize.width * scale, logicalSize.height * scale);
 
@@ -65,7 +66,7 @@ class WebMarkerUtils {
       markerId: const google_maps.MarkerId('current_location_web'),
       position: google_maps.LatLng(lat, lng),
       icon: bitmap,
-      zIndex: 10, // Ensure it's on top
+      zIndex: MarkerZIndex.currentLocation,
       anchor: const Offset(0.5, 0.5),
     );
   }
@@ -85,9 +86,9 @@ class WebMarkerUtils {
 
     final double scale =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(120, 150);
+    const logicalSize = Size(120, 150);
     final imageSize =
-    Size(logicalSize.width * scale, logicalSize.height * scale);
+        Size(logicalSize.width * scale, logicalSize.height * scale);
 
     final bitmap = await widget.toBitmapDescriptor(
       logicalSize: logicalSize,
@@ -102,7 +103,7 @@ class WebMarkerUtils {
         userLocationModel.lng?.toDouble() ?? 0.0,
       ),
       icon: bitmap,
-      zIndex: 6,
+      zIndex: MarkerZIndex.userGeoMapAvatar,
       onTap: () {
         onClick(userLocationModel);
       },
@@ -165,7 +166,7 @@ class WebMarkerUtils {
                     final firstLine = words.sublist(0, 3).join(' ');
                     String secondLine = words.length <= 6
                         ? words.sublist(3).join(' ')
-                        : words.sublist(3, 6).join(' ') + "...";
+                        : "${words.sublist(3, 6).join(' ')}...";
                     displayName = '$firstLine\n$secondLine';
                   }
                   return Center(
@@ -193,7 +194,7 @@ class WebMarkerUtils {
         ],
       );
     } else if (trackingConfig?.typeAvatarOption == "emoji") {
-      return  Container(
+      return SizedBox(
         height: 30,
         width: 30,
         child: Text(
@@ -287,7 +288,7 @@ class WebMarkerUtils {
 
     // Convert widget -> BitmapDescriptor (xài widget_to_marker package hoặc tương đương)
     final scaleFactor = WidgetsBinding.instance.window.devicePixelRatio;
-    final logicalSize = const Size(32, 32);
+    const logicalSize = Size(32, 32);
     final imageSize = Size(32 * scaleFactor, 32 * scaleFactor);
     final bitmap = await markerWidget.toBitmapDescriptor(
       logicalSize: logicalSize,
@@ -303,7 +304,7 @@ class WebMarkerUtils {
         item.lng!.toDouble(),
       ),
       icon: bitmap,
-      zIndex: 4,
+      zIndex: MarkerZIndex.geofencingCenter,
       onTap: () {
         onClick(item);
       },
@@ -364,7 +365,7 @@ class WebMarkerUtils {
         ),
       ),
       key: ValueKey(
-          'center_${item.uuid ?? 'point_${item.lat}_${item.lng}_${index}'}'),
+          'center_${item.uuid ?? 'point_${item.lat}_${item.lng}_$index'}'),
     );
   }
 
@@ -414,7 +415,6 @@ class WebMarkerUtils {
     );
   }
 
-
   /// Build user check-in marker
   static Future<google_maps.Marker> buildUserCheckInMarker(
     UserCheckIn userCheckIn,
@@ -424,7 +424,7 @@ class WebMarkerUtils {
       throw Exception('UserCheckIn has no coordinates');
     }
 
-    final widget = Container(
+    final widget = SizedBox(
       width: 45,
       height: 45,
       child: Image.asset(
@@ -435,7 +435,7 @@ class WebMarkerUtils {
 
     final double scale =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(45, 45);
+    const logicalSize = Size(45, 45);
     final imageSize =
         Size(logicalSize.width * scale, logicalSize.height * scale);
 
@@ -445,8 +445,8 @@ class WebMarkerUtils {
     );
 
     return google_maps.Marker(
-      markerId: google_maps.MarkerId(
-          'checkin_${userCheckIn.lat}_${userCheckIn.lng}'),
+      markerId:
+          google_maps.MarkerId('checkin_${userCheckIn.lat}_${userCheckIn.lng}'),
       position: google_maps.LatLng(
         userCheckIn.lat!.toDouble(),
         userCheckIn.lng!.toDouble(),
@@ -496,8 +496,10 @@ class WebMarkerUtils {
     // Format time
     String formattedTime = "";
     if (userCheckIn.timeCheckIn != null) {
-      final dateTime = DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
-      formattedTime = "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
+      final dateTime =
+          DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
+      formattedTime =
+          "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
 
     final String address = userCheckIn.address ?? "";
@@ -528,7 +530,8 @@ class WebMarkerUtils {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.person_outline, size: 20, color: Colors.grey),
+                  const Icon(Icons.person_outline,
+                      size: 20, color: Colors.grey),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -581,7 +584,8 @@ class WebMarkerUtils {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                    const Icon(Icons.location_on_outlined,
+                        size: 18, color: Colors.grey),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -618,12 +622,14 @@ class WebMarkerUtils {
       imageSize: imageSize,
     );
 
-
     return google_maps.Marker(
-      zIndex: 5,
+      zIndex: MarkerZIndex.userCheckInInfoPopup,
       consumeTapEvents: true,
-      markerId: google_maps.MarkerId("checkin_info_${userCheckIn.userJoinGeoMapUuid}"),
-      position: google_maps.LatLng(userCheckIn.lat!.toDouble(), userCheckIn.lng!.toDouble()),
+      anchor: const Offset(0.5, 1.25),
+      markerId: google_maps.MarkerId(
+          "checkin_info_${userCheckIn.userJoinGeoMapUuid}"),
+      position: google_maps.LatLng(
+          userCheckIn.lat!.toDouble(), userCheckIn.lng!.toDouble()),
       icon: bitmapDescriptor,
       onTap: () => onClick(),
     );
@@ -638,8 +644,10 @@ class WebMarkerUtils {
     // Format time
     String formattedTime = "";
     if (userCheckIn.timeCheckIn != null) {
-      final dateTime = DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
-      formattedTime = "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
+      final dateTime =
+          DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
+      formattedTime =
+          "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
 
     final String address = userCheckIn.address ?? "";
@@ -680,7 +688,8 @@ class WebMarkerUtils {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.person_outline, size: 20, color: Colors.grey),
+                      const Icon(Icons.person_outline,
+                          size: 20, color: Colors.grey),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -708,7 +717,8 @@ class WebMarkerUtils {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.access_time, size: 18, color: Colors.grey),
+                        const Icon(Icons.access_time,
+                            size: 18, color: Colors.grey),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -730,7 +740,8 @@ class WebMarkerUtils {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                        const Icon(Icons.location_on_outlined,
+                            size: 18, color: Colors.grey),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -761,5 +772,180 @@ class WebMarkerUtils {
     );
   }
 
+  static google_maps.BitmapDescriptor? _cachedDotBitmap;
 
+  /// Build a small green dot marker for a tracing path point (Google Maps)
+  static Future<google_maps.Marker> buildTracingDotMarker({
+    required double lat,
+    required double lng,
+    required String markerId,
+    String? time,
+    String? address,
+    required void Function() onClick,
+  }) async {
+    if (_cachedDotBitmap == null) {
+      final widget = Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.green,
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+      );
+
+      final double scale =
+          PlatformDispatcher.instance.views.first.devicePixelRatio;
+      const logicalSize = Size(16, 16);
+      final imageSize =
+          Size(logicalSize.width * scale, logicalSize.height * scale);
+
+      _cachedDotBitmap = await widget.toBitmapDescriptor(
+        logicalSize: logicalSize,
+        imageSize: imageSize,
+      );
+    }
+
+    return google_maps.Marker(
+      markerId: google_maps.MarkerId(markerId),
+      position: google_maps.LatLng(lat, lng),
+      icon: _cachedDotBitmap!,
+      zIndex: MarkerZIndex.tracingDot,
+      anchor: const Offset(0.5, 0.5),
+      onTap: onClick,
+    );
+  }
+
+  /// Build info popup marker for a tracing dot (Google Maps)
+  static Future<google_maps.Marker> buildTracingDotInfoMarker({
+    required double lat,
+    required double lng,
+    required String markerId,
+    String? time,
+    String? address,
+    bool isAvatar = false,
+    required void Function() onClose,
+  }) async {
+    String formattedTime = '';
+    if (time != null && time.isNotEmpty) {
+      try {
+        DateTime dt;
+        if (time.contains('T') || time.contains('Z')) {
+          dt = DateTime.parse(time).toLocal();
+        } else {
+          dt = DateTime.fromMillisecondsSinceEpoch(int.parse(time)).toLocal();
+        }
+        formattedTime =
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ngày ${dt.day}/${dt.month}/${dt.year}';
+      } catch (_) {
+        formattedTime = time;
+      }
+    }
+
+    final widget = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.4)),
+            boxShadow: const [
+              BoxShadow(
+                  color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.green),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Vị trí',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onClose,
+                    child:
+                        const Icon(Icons.close, size: 16, color: Colors.grey),
+                  ),
+                ],
+              ),
+              if (formattedTime.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        formattedTime,
+                        style: const TextStyle(
+                            fontSize: textSizeSmall, color: Colors.black87),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (address != null && address.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        address,
+                        style: const TextStyle(
+                            fontSize: textSizeSmall, color: Colors.black87),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        CustomPaint(
+          size: const Size(10, 6),
+          painter: TrianglePainter(color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+
+    final double scaleFactor =
+        PlatformDispatcher.instance.views.first.devicePixelRatio;
+    const logicalSize = Size(200, 160);
+    final imageSize =
+        Size(logicalSize.width * scaleFactor, logicalSize.height * scaleFactor);
+    final bitmapDescriptor = await widget.toBitmapDescriptor(
+      logicalSize: logicalSize,
+      imageSize: imageSize,
+    );
+
+    return google_maps.Marker(
+      zIndex: MarkerZIndex.tracingDotInfoPopup,
+      consumeTapEvents: true,
+      markerId: google_maps.MarkerId(markerId),
+      position: google_maps.LatLng(lat, lng),
+      icon: bitmapDescriptor,
+      anchor: isAvatar ? const Offset(0.5, 1.22) : const Offset(0.5, 1.0),
+      onTap: onClose,
+    );
+  }
 }

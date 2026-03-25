@@ -28,16 +28,12 @@ class GeoMapStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (centerReload) {
       return CardContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
-            Align(
-                alignment: Alignment.centerLeft, child: _buildReloadButton()),
-            const SizedBox(width: 16),
-            RealtimeClockText(
-              style: fontConfig.titleStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const Expanded(child: SizedBox()),
+            Align(alignment: Alignment.centerLeft, child: _buildReloadButton()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildTopContent()),
             if (showCloseButton) _buildCloseButton(),
           ],
         ),
@@ -45,24 +41,80 @@ class GeoMapStatusCard extends StatelessWidget {
     }
 
     return CardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              _buildReloadButton(),
-              const SizedBox(width: 16),
-              RealtimeClockText(
-                style: fontConfig.titleStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const Expanded(child: SizedBox()),
-              if (showCloseButton) _buildCloseButton(),
-            ],
-          ),
+          _buildReloadButton(),
+          const SizedBox(width: 12),
+          Expanded(child: _buildTopContent()),
+          if (showCloseButton) _buildCloseButton(),
         ],
       ),
     );
+  }
+
+  /// Shows the dropdown when multi-day, otherwise shows the realtime clock.
+  Widget _buildTopContent() {
+    return Obx(() {
+      if (controller.isMultiDay) {
+        final days = controller.availableDays;
+        final selected = controller.selectedDay;
+        return Container(
+          margin: const EdgeInsets.only(right: 16),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<DateTime>(
+              value: selected,
+              isExpanded: true,
+              dropdownColor: Colors.white,
+              focusColor: Colors.transparent,
+              icon: const Icon(Icons.keyboard_arrow_down,
+                  color: Colors.green, size: 18),
+              style: fontConfig.titleStyle(
+                  fontWeight: FontWeight.bold, fontSize: 15),
+              selectedItemBuilder: (BuildContext context) {
+                return days.map<Widget>((DateTime day) {
+                  final label =
+                      '${day.day.toString().padLeft(2, '0')}/${day.month.toString().padLeft(2, '0')}/${day.year}';
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today,
+                          size: 14, color: Colors.green),
+                      const SizedBox(width: 6),
+                      Text(label,
+                          style: const TextStyle(color: Colors.black87)),
+                    ],
+                  );
+                }).toList();
+              },
+              items: days.map((day) {
+                final label =
+                    '${day.day.toString().padLeft(2, '0')}/${day.month.toString().padLeft(2, '0')}/${day.year}';
+                return DropdownMenuItem(
+                  value: day,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today,
+                          size: 14, color: Colors.green),
+                      const SizedBox(width: 6),
+                      Text(label),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (day) {
+                if (day != null) {
+                  controller.selectDay(day, geoMapCode);
+                }
+              },
+            ),
+          ),
+        );
+      }
+      return RealtimeClockText(
+        style: fontConfig.titleStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      );
+    });
   }
 
   Widget _buildCloseButton() {
@@ -113,10 +165,14 @@ class GeoMapStatusCard extends StatelessWidget {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isLoading ? Colors.grey[100] : Colors.blue.withValues(alpha: 0.08),
+                color: isLoading
+                    ? Colors.grey[100]
+                    : Colors.blue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isLoading ? Colors.grey[300]! : Colors.blue.withValues(alpha: 0.2),
+                  color: isLoading
+                      ? Colors.grey[300]!
+                      : Colors.blue.withValues(alpha: 0.2),
                   width: 1,
                 ),
                 boxShadow: [
@@ -139,7 +195,8 @@ class GeoMapStatusCard extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.blue),
                         ),
                       )
                     : Icon(
@@ -205,7 +262,7 @@ class _ChevronLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Color(0xff3B82F6)
+      ..color = const Color(0xff3B82F6)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -220,7 +277,8 @@ class _ChevronLinePainter extends CustomPainter {
 
     // Draw chevrons with animation offset
     while (startX < size.width) {
-      if (startX + chevronWidth >= 0) { // Only draw visible chevrons
+      if (startX + chevronWidth >= 0) {
+        // Only draw visible chevrons
         Path path = Path();
         path.moveTo(startX, 0);
         path.lineTo(startX + chevronWidth / 2, size.height / 2);
@@ -233,5 +291,6 @@ class _ChevronLinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChevronLinePainter oldDelegate) => oldDelegate.offset != offset;
+  bool shouldRepaint(_ChevronLinePainter oldDelegate) =>
+      oldDelegate.offset != offset;
 }

@@ -20,10 +20,8 @@ class MapColors {
   /// Geofencing circle color
   static const Color geofencingCircle = Color(0xFF4CAF50); // Green
 
-
   /// Route color
   static const Color route = Color(0xff04439b); // Blue
-
 
   /// Marker border color
   static const Color markerBorder = Color(0xFFFFFFFF); // White
@@ -47,5 +45,4 @@ class MapColors {
     final random = Random(name.hashCode);
     return Colors.primaries[random.nextInt(Colors.primaries.length)];
   }
-
 }

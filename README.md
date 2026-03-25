@@ -2,12 +2,21 @@
 
 A Flutter package for displaying geomaps with Google Maps and Flutter Map, supporting both mobile and web platforms with GetX state management.
 
+## Screenshots
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/username/repo/main/screenshots/mobile.png" width="300" alt="Mobile View" />
+  <img src="https://raw.githubusercontent.com/username/repo/main/screenshots/web.png" width="600" alt="Web View" />
+</p>
+
 ## Features
 
 - 🗺️ Universal map widget that works on both mobile and web
 - 🔄 Support for both Google Maps and Flutter Map on all platforms
 - 👤 Role-based views: `viewer` (full features) and `driver` (simplified view)
 - 📍 Display markers, circles, polygons, and polylines
+- 🕒 **Responsive Vertical Timeline** with numbers and addresses (left-aligned)
+- 📑 Collapsible stop list for better map visibility
 - 🔗 Close button callback for WebView integration
 - 🎨 Customizable font configuration
 - 🔧 Custom API base URLs for development and production
@@ -155,14 +164,15 @@ ngrok http 8080
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `apiKey` | `String` | ✅ | - | JWT token from [business.sharemap.live](https://business.sharemap.live). **Required for all maps** - used to call ShareMap API. |
-| `routeServiceKey` | `String?` | ❌ | `null` | API key for route drawing. Used to call route API to render polylines on map. |
+| `apiKey` | `String` | ✅ | - | JWT token from [business.sharemap.live](https://business.sharemap.live). **Required** - stores geomap permissions, driver IDs, and **date ranges** (`startTime`/`endTime` in ms). |
+| `routeServiceKey` | `String?` | ❌ | `null` | API key for route drawing. Used to render polylines on map. |
 | `mapType` | `GeoMapType` | ✅ | - | `GeoMapType.flutterMap` (free) or `GeoMapType.googleMap` (requires setup) |
 | `environment` | `Environment` | ❌ | `production` | `Environment.production` or `Environment.development` |
 | `role` | `GeoMapRole` | ❌ | `viewer` | `GeoMapRole.viewer` (full UI) or `GeoMapRole.driver` (minimal UI) |
 | `fontConfig` | `FontConfig` | ❌ | default | Custom font family and sizes |
 | `devApiUrl` | `String?` | ❌ | `null` | Override development API base URL |
 | `prodApiUrl` | `String?` | ❌ | `null` | Override production API base URL |
+| `showLogs` | `bool` | ❌ | `false` | Enable/disable internal package logging (**Recommended to disable in production**) |
 
 ### GeoMapPublic Widget
 
@@ -182,6 +192,8 @@ ngrok http 8080
 | `onToggleSheetPressed` | `Function(bool)?` | ❌ | `null` | Callback when info panel expanded/collapsed |
 | `onStopItemPressed` | `Function(dynamic)?` | ❌ | `null` | Callback when user taps a stop |
 | `onCopyPressed` | `Function(String)?` | ❌ | `null` | Callback when copy link button pressed |
+| `infoCardModel` | `GeomapInfoCardModel?` | ❌ | `null` | Optional model to override fields in [GeoMapInfoCard] |
+| `driverInfoCardModel` | `GeomapDriverInfoCardModel?` | ❌ | `null` | Optional model to override fields in [GeoMapDriverInfoCard] |
 
 ### FontConfig
 
@@ -194,6 +206,51 @@ ngrok http 8080
 | `bodyFontSize` | `double` | `14.0` | Body text size |
 | `boldFontWeight` | `FontWeight` | `FontWeight.bold` | Bold text weight |
 | `regularFontWeight` | `FontWeight` | `FontWeight.normal` | Regular text weight |
+
+### Custom Card Overrides
+
+Pass these models to `GeoMapPublic` to override or add information to the UI cards.
+
+#### GeomapInfoCardModel
+Used to customize the general geomap details card.
+
+| Field | Description |
+|-------|-------------|
+| `title` | Override card title (default: "Bản đồ") |
+| `mapName` | Override geomap name text |
+| `mapCode` | Override geomap code text |
+| `dateDisplay` | Override formatted date string |
+| `description` | **New**: Display additional description text below the name |
+| `mapNameLabel` | Custom label for name field (default: "Tên bản đồ") |
+| `mapCodeLabel` | Custom label for code field (default: "Mã bản đồ") |
+| `dateDisplayLabel` | Custom label for date field (default: "Ngày") |
+| `descriptionLabel` | Custom label for description field |
+
+#### GeomapDriverInfoCardModel
+Used to customize the driver/participant information card.
+
+| Field | Description |
+|-------|-------------|
+| `title` | Override card title (default: "Người tham gia") |
+| `driverName` | Override the resolved driver name |
+| `plate` | Override the vehicle plate display |
+| `phone` | Override the driver phone number |
+| `avatarUrl` | Override the avatar image URL |
+| `description` | **New**: Display extra context or status below driver info |
+
+---
+
+## Technical Details
+
+### JWT Token Data Range
+The package now supports accurate date ranges via JWT token fields:
+- `startTime`: Milliseconds since epoch for the start of tracking.
+- `endTime`: Milliseconds since epoch for the end of tracking.
+- `date`: (Legacy) Milliseconds since epoch. If `startTime`/`endTime` are missing, the package derives the 24h range from `date`.
+
+### UI Component State
+- **Auto-Refresh**: Mobile viewer mode automatically refreshes driver data every 5 minutes if `automaticRunTime` is not specified in the dataset.
+- **Z-Index Display**: Fixed layering where InfoWindows > Markers > Routes > Polygons.
 
 ---
 
@@ -250,6 +307,9 @@ controller.updateGeoMapCode('new_code');
 // Toggle expandable sheet
 controller.toggleSheet();
 
+// Toggle collapsed timeline (left side)
+controller.toggleTimeline();
+
 // Expand/collapse sheet programmatically
 controller.expandSheet();
 controller.collapseSheet();
@@ -295,6 +355,21 @@ Add to `ios/Runner/Info.plist`:
 <key>NSLocationAlwaysUsageDescription</key>
 <string>This app needs location access to track your position</string>
 ```
+
+---
+
+## Marker Layering (Z-Index)
+
+To ensure consistent overlapping of elements, the package follows a standardized Z-index layering (primarily for Google Maps):
+
+| Layer | Z-Index | Description |
+|-------|---------|-------------|
+| **Polygons** | `0.0` | Geofencing boundaries and circles |
+| **Center Markers** | `1.0` | Central points of geofences |
+| **Tracing Routes** | `2.0` | Vehicle/Driver path polylines |
+| **Tracing Dots** | `3.0` | Historical location points |
+| **Avatars** | `5.0` | Driver/User avatar markers |
+| **Info Windows** | `8.0` | Popups and selection info |
 
 ---
 

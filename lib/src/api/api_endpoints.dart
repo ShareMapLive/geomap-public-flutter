@@ -32,4 +32,3 @@ class ApiEndpoints {
   String get datasetTrackingListByTimeRange =>
       '$baseUrl/sharemap-dataset-tracking/public/list-by-time-range';
 }
-

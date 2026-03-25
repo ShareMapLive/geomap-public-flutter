@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart' as latlong;
 
 import '../models/geofencing_model.dart';
 import 'map_colors.dart';
+import 'marker_z_indexes.dart';
 
 /// Utility class for creating Google Maps markers, circles, polygons, and polylines
 class GoogleMapMarkerUtils {
@@ -36,20 +37,16 @@ class GoogleMapMarkerUtils {
     Color color,
     int index,
   ) {
-    print('Building route polyline $index with ${routePoints.length} points');
     final points = routePoints
         .map((point) => LatLng(point.latitude, point.longitude))
         .toList();
-    print('Converted to ${points.length} Google Maps LatLng points');
 
-    final polyline = Polyline(
+    return Polyline(
       polylineId: PolylineId('route_$index'),
       points: points,
       color: color,
       width: 5,
     );
-    print('Created polyline with ID: route_$index, points count: ${polyline.points.length}');
-    return polyline;
   }
 
   /// Build tracing route polyline for Google Maps with unique ID to avoid conflicts
@@ -58,20 +55,16 @@ class GoogleMapMarkerUtils {
     Color color,
     int index,
   ) {
-    print('Building tracing route polyline $index with ${routePoints.length} points');
     final points = routePoints
         .map((point) => LatLng(point.latitude, point.longitude))
         .toList();
-    print('Converted to ${points.length} Google Maps LatLng points');
 
-    final polyline = Polyline(
+    return Polyline(
       polylineId: PolylineId('route_tracing_$index'),
       points: points,
       color: color,
-      zIndex: 1, // Higher z-index for tracing routes
+      zIndex: MarkerZIndex.tracingRoutePolyline.toInt(),
       width: 5,
     );
-    print('Created tracing polyline with ID: route_tracing_$index, points count: ${polyline.points.length}');
-    return polyline;
   }
 }

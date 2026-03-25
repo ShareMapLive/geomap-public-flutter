@@ -5,6 +5,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../base/base_geomap_widget.dart';
 import '../shared_geomap_components.dart';
+import '../components/geomap_collapsed_timeline.dart';
 
 /// Web-specific geomap widget with UI optimized for web browsers
 class WebGeoMapWidget extends StatelessWidget {
@@ -53,6 +54,12 @@ class WebGeoMapWidget extends StatelessWidget {
   /// Whether to show the map toolbar
   final bool mapToolbarEnabled;
 
+  /// Optional model to override fields in [GeoMapInfoCard].
+  final GeomapInfoCardModel? infoCardModel;
+
+  /// Optional model to override fields in [GeoMapDriverInfoCard].
+  final GeomapDriverInfoCardModel? driverInfoCardModel;
+
   /// Creates a new [WebGeoMapWidget] instance
   const WebGeoMapWidget({
     super.key,
@@ -71,6 +78,8 @@ class WebGeoMapWidget extends StatelessWidget {
     this.myLocationButtonEnabled = true,
     this.compassEnabled = false,
     this.mapToolbarEnabled = false,
+    this.infoCardModel,
+    this.driverInfoCardModel,
   });
 
   @override
@@ -101,7 +110,7 @@ class WebGeoMapWidget extends StatelessWidget {
             ),
 
             if (isMobile)
-              _buildMobileOverlay(context, constraints)
+              ..._buildMobileOverlay(context, constraints)
             else
               _buildDesktopOverlay(context),
           ],
@@ -110,172 +119,190 @@ class WebGeoMapWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileOverlay(BuildContext context, BoxConstraints constraints) {
-    return Positioned(
-      top: 16, // Web usually doesn't have status bar padding
-      left: 0,
-      right: 0,
-      child: Obx(() {
-        final isExpanded = controller.isSheetExpanded.value;
+  List<Widget> _buildMobileOverlay(
+      BuildContext context, BoxConstraints constraints) {
+    return [
+      Positioned(
+        top: 16, // Web usually doesn't have status bar padding
+        left: 0,
+        right: 0,
+        child: Obx(() {
+          final isExpanded = controller.isSheetExpanded.value;
 
-        return PointerInterceptor(
-          child: Column(
-            children: [
-              // Status Card
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                child: GeoMapStatusCard(
-                  controller: controller,
-                  geoMapCode: geoMapCode,
-                  fontConfig: controller.config.fontConfig,
-                  centerReload: true,
-                  showCloseButton: showCloseButton,
-                  onClosePressed: onClosePressed,
-                  onReloadPressed: onReloadPressed,
+          return PointerInterceptor(
+            child: Column(
+              children: [
+                // Status Card
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GeoMapStatusCard(
+                    controller: controller,
+                    geoMapCode: geoMapCode,
+                    fontConfig: controller.config.fontConfig,
+                    centerReload: true,
+                    showCloseButton: showCloseButton,
+                    onClosePressed: onClosePressed,
+                    onReloadPressed: onReloadPressed,
+                  ),
                 ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                constraints: BoxConstraints(
-                  maxHeight: isExpanded
-                      ? constraints.maxHeight * 0.8
-                      : 50,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Expand/Collapse Button
-                    InkWell(
-                      onTap: () {
-                        controller.toggleSheet();
-                        onToggleSheetPressed?.call(controller.isSheetExpanded.value);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              isExpanded ? 'Thu gọn' : 'Xem thêm',
-                              style: controller.config.fontConfig.bodyStyle(
-                                color: Colors.green,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              isExpanded
-                                  ? Icons.keyboard_arrow_up
-                                  : Icons.keyboard_arrow_down,
-                              color: Colors.green,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Expandable Content
-                    if (isExpanded)
-                      Flexible(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          child: Column(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  constraints: BoxConstraints(
+                    maxHeight: isExpanded ? constraints.maxHeight * 0.8 : 50,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Expand/Collapse Button
+                      InkWell(
+                        onTap: () {
+                          controller.toggleSheet();
+                          onToggleSheetPressed
+                              ?.call(controller.isSheetExpanded.value);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if (controller.config.role == GeoMapRole.viewer)
-                                GeoMapDriverInfoCard(
-                                  controller: controller,
-                                  fontConfig: controller.config.fontConfig,
+                              Text(
+                                isExpanded ? 'Thu gọn' : 'Xem thêm',
+                                style: controller.config.fontConfig.bodyStyle(
+                                  color: Colors.green,
+                                  fontSize: 14,
                                 ),
-                              GeoMapInfoCard(
-                                controller: controller,
-                                fontConfig: controller.config.fontConfig,
                               ),
-                              GeoMapStopList(
-                                controller: controller,
-                                fontConfig: controller.config.fontConfig,
-                                onStopItemPressed: onStopItemPressed,
+                              const SizedBox(width: 4),
+                              Icon(
+                                isExpanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                color: Colors.green,
+                                size: 20,
                               ),
-                              GeoMapLinkCard(
-                                url: controller.getPublicGeoMapUrl(geoMapCode),
-                                fontConfig: controller.config.fontConfig,
-                                onCopyPressed: onCopyPressed,
-                              ),
-                              const SizedBox(height: 50),
                             ],
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }),
-    );
-  }
 
-  Widget _buildDesktopOverlay(BuildContext context) {
-      return Positioned(
-        top: 16,
-        left: 16,
-        bottom: 16,
-        width: 360,
-        child: PointerInterceptor(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      GeoMapStatusCard(
-                        controller: controller,
-                        geoMapCode: geoMapCode,
-                        fontConfig: controller.config.fontConfig,
-                        showCloseButton: showCloseButton,
-                        onClosePressed: onClosePressed,
-                        onReloadPressed: onReloadPressed,
-                      ),
-                      if (controller.config.role == GeoMapRole.viewer)
-                        GeoMapDriverInfoCard(
-                          controller: controller,
-                          fontConfig: controller.config.fontConfig,
+                      // Expandable Content
+                      if (isExpanded)
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Column(
+                              children: [
+                                if (controller.config.role == GeoMapRole.viewer)
+                                  GeoMapDriverInfoCard(
+                                    controller: controller,
+                                    fontConfig: controller.config.fontConfig,
+                                    driverInfoCardModel: driverInfoCardModel,
+                                  ),
+                                GeoMapInfoCard(
+                                  controller: controller,
+                                  fontConfig: controller.config.fontConfig,
+                                  infoCardModel: infoCardModel,
+                                ),
+                                GeoMapStopList(
+                                  controller: controller,
+                                  fontConfig: controller.config.fontConfig,
+                                  onStopItemPressed: onStopItemPressed,
+                                ),
+                                GeoMapLinkCard(
+                                  url:
+                                      controller.getPublicGeoMapUrl(geoMapCode),
+                                  fontConfig: controller.config.fontConfig,
+                                  onCopyPressed: onCopyPressed,
+                                ),
+                                const SizedBox(height: 50),
+                              ],
+                            ),
+                          ),
                         ),
-                      GeoMapInfoCard(
-                        controller: controller,
-                        fontConfig: controller.config.fontConfig,
-                      ),
-                      GeoMapStopList(
-                        controller: controller,
-                        fontConfig: controller.config.fontConfig,
-                        onStopItemPressed: onStopItemPressed,
-                      ),
-                      GeoMapLinkCard(
-                        url: controller.getPublicGeoMapUrl(geoMapCode),
-                        fontConfig: controller.config.fontConfig,
-                        onCopyPressed: onCopyPressed,
-                      ),
                     ],
                   ),
                 ),
+              ],
+            ),
+          );
+        }),
+      ),
+      // Mobile collapsed timeline: shows when sheet is collapsed (web responsive)
+      Positioned(
+        top: 140,
+        left: 4,
+        child: Obx(() {
+          final isExpanded = controller.isSheetExpanded.value;
+          if (isExpanded) return const SizedBox.shrink();
+          return GeoMapCollapsedTimeline(
+            controller: controller,
+          );
+        }),
+      ),
+    ];
+  }
+
+  Widget _buildDesktopOverlay(BuildContext context) {
+    return Positioned(
+      top: 16,
+      left: 16,
+      bottom: 16,
+      width: 360,
+      child: PointerInterceptor(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    GeoMapStatusCard(
+                      controller: controller,
+                      geoMapCode: geoMapCode,
+                      fontConfig: controller.config.fontConfig,
+                      showCloseButton: showCloseButton,
+                      onClosePressed: onClosePressed,
+                      onReloadPressed: onReloadPressed,
+                    ),
+                    if (controller.config.role == GeoMapRole.viewer)
+                      GeoMapDriverInfoCard(
+                        controller: controller,
+                        fontConfig: controller.config.fontConfig,
+                        driverInfoCardModel: driverInfoCardModel,
+                      ),
+                    GeoMapInfoCard(
+                      controller: controller,
+                      fontConfig: controller.config.fontConfig,
+                      infoCardModel: infoCardModel,
+                    ),
+                    GeoMapStopList(
+                      controller: controller,
+                      fontConfig: controller.config.fontConfig,
+                      onStopItemPressed: onStopItemPressed,
+                    ),
+                    GeoMapLinkCard(
+                      url: controller.getPublicGeoMapUrl(geoMapCode),
+                      fontConfig: controller.config.fontConfig,
+                      onCopyPressed: onCopyPressed,
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }

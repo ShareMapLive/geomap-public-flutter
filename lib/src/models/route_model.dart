@@ -6,14 +6,12 @@ class RouteModel {
   RouteModel({this.code, this.routes});
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
-    print('Parsing RouteModel from JSON: $json');
     final model = RouteModel(
       code: json['code'],
       routes: json['routes'] != null
           ? List<Route>.from(json['routes'].map((x) => Route.fromJson(x)))
           : null,
     );
-    print('Parsed RouteModel with code: ${model.code}, routes count: ${model.routes?.length ?? 0}');
     return model;
   }
 
@@ -37,8 +35,6 @@ class Route {
   Route({this.distance, this.duration, this.legs, this.geometry});
 
   factory Route.fromJson(Map<String, dynamic> json) {
-    print('Parsing Route from JSON. Keys: ${json.keys}');
-    print('Route geometry: ${json['geometry']}');
     final route = Route(
       distance: json['distance'],
       duration: json['duration'],
@@ -47,7 +43,6 @@ class Route {
           : null,
       geometry: json['geometry'],
     );
-    print('Parsed Route with distance: ${route.distance}, duration: ${route.duration}, legs count: ${route.legs?.length ?? 0}');
     return route;
   }
 
@@ -72,8 +67,6 @@ class Leg {
   Leg({this.distance, this.duration, this.steps});
 
   factory Leg.fromJson(Map<String, dynamic> json) {
-    print('Parsing Leg from JSON. Keys: ${json.keys}');
-    print('Leg steps count: ${json['steps']?.length ?? 0}');
     final leg = Leg(
       distance: json['distance'],
       duration: json['duration'],
@@ -81,7 +74,6 @@ class Leg {
           ? List<Step>.from(json['steps'].map((x) => Step.fromJson(x)))
           : null,
     );
-    print('Parsed Leg with distance: ${leg.distance}, duration: ${leg.duration}, steps count: ${leg.steps?.length ?? 0}');
     return leg;
   }
 
@@ -121,8 +113,6 @@ class Step {
   });
 
   factory Step.fromJson(Map<String, dynamic> json) {
-    print('Parsing Step from JSON. Keys: ${json.keys}');
-    print('Step intersections count: ${json['intersections']?.length ?? 0}');
     final step = Step(
       distance: json['distance'],
       duration: json['duration'],
@@ -138,7 +128,6 @@ class Step {
           : null,
       weight: json['weight'],
     );
-    print('Parsed Step with distance: ${step.distance}, duration: ${step.duration}, intersections count: ${step.intersections?.length ?? 0}');
     return step;
   }
 
@@ -211,8 +200,6 @@ class Intersection {
   Intersection({this.out, this.inn, this.entry, this.bearings, this.location});
 
   factory Intersection.fromJson(Map<String, dynamic> json) {
-    print('Parsing Intersection from JSON. Keys: ${json.keys}');
-    print('Intersection location: ${json['location']}');
     final intersection = Intersection(
       out: json['out'],
       inn: json['in'],
@@ -222,7 +209,6 @@ class Intersection {
       location:
           json['location'] != null ? List<num>.from(json['location']) : null,
     );
-    print('Parsed Intersection with location: ${intersection.location}');
     return intersection;
   }
 

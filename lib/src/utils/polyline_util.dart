@@ -4,7 +4,6 @@ import 'package:latlong2/latlong.dart';
 class PolylineUtil {
   /// Decode a polyline string to a list of LatLng points
   static List<LatLng> decode(String encoded) {
-    print('Decoding polyline with length: ${encoded.length}');
     List<LatLng> poly = [];
     int index = 0, len = encoded.length;
     int lat = 0, lng = 0;
@@ -32,8 +31,7 @@ class PolylineUtil {
       LatLng p = LatLng(lat / 1E5, lng / 1E5);
       poly.add(p);
     }
-    
-    print('Decoded polyline into ${poly.length} points');
+
     return poly;
   }
 

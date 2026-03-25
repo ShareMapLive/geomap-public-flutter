@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get/get.dart';
 
 import 'geomap_controller.dart';
+import 'models/geomap_driver_info_card_model.dart';
+import 'models/geomap_info_card_model.dart';
 import 'widgets/mobile/mobile_geomap_widget.dart';
 import 'widgets/web/web_geomap_widget.dart';
 
@@ -53,6 +55,12 @@ class GeoMapPublic extends StatelessWidget {
   /// Callback when the copy link button is pressed
   final Function(String url)? onCopyPressed;
 
+  /// Optional model to override fields displayed in [GeoMapInfoCard].
+  final GeomapInfoCardModel? infoCardModel;
+
+  /// Optional model to override fields displayed in [GeoMapDriverInfoCard].
+  final GeomapDriverInfoCardModel? driverInfoCardModel;
+
   /// Creates a new [GeoMapPublic] instance
   ///
   /// [controller] is required and manages the map state
@@ -72,6 +80,8 @@ class GeoMapPublic extends StatelessWidget {
     this.onToggleSheetPressed,
     this.onStopItemPressed,
     this.onCopyPressed,
+    this.infoCardModel,
+    this.driverInfoCardModel,
   });
 
   @override
@@ -94,6 +104,8 @@ class GeoMapPublic extends StatelessWidget {
         onToggleSheetPressed: onToggleSheetPressed,
         onStopItemPressed: onStopItemPressed,
         onCopyPressed: onCopyPressed,
+        infoCardModel: infoCardModel,
+        driverInfoCardModel: driverInfoCardModel,
       );
     } else {
       mapWidget = MobileGeoMapWidget(
@@ -111,6 +123,8 @@ class GeoMapPublic extends StatelessWidget {
         onToggleSheetPressed: onToggleSheetPressed,
         onStopItemPressed: onStopItemPressed,
         onCopyPressed: onCopyPressed,
+        infoCardModel: infoCardModel,
+        driverInfoCardModel: driverInfoCardModel,
       );
     }
 
@@ -129,13 +143,13 @@ class GeoMapPublic extends StatelessWidget {
               border: Border.all(color: Colors.black12, width: 0.5),
             ),
             child: Obx(() => Text(
-              'v${GeoMapController.version}',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.black.withOpacity(0.4),
-                fontWeight: FontWeight.w500,
-              ),
-            )),
+                  'v${GeoMapController.version}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.black.withOpacity(0.4),
+                    fontWeight: FontWeight.w500,
+                  ),
+                )),
           ),
         ),
       ],

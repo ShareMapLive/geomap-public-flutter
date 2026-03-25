@@ -37,6 +37,10 @@ class GeoMapConfig {
   /// Optional base URL for production API requests.
   final String? prodApiUrl;
 
+  /// Whether to enable internal package logging (useful for debugging).
+  /// Defaults to false.
+  final bool showLogs;
+
   /// Creates a new [GeoMapConfig] instance
   ///
   /// [apiKey] is required for accessing map services
@@ -55,6 +59,7 @@ class GeoMapConfig {
     this.role = GeoMapRole.viewer,
     this.devApiUrl,
     this.prodApiUrl,
+    this.showLogs = false,
   });
 
   @override
@@ -68,7 +73,8 @@ class GeoMapConfig {
         other.fontConfig == fontConfig &&
         other.role == role &&
         other.devApiUrl == devApiUrl &&
-        other.prodApiUrl == prodApiUrl;
+        other.prodApiUrl == prodApiUrl &&
+        other.showLogs == showLogs;
   }
 
   @override
@@ -80,9 +86,10 @@ class GeoMapConfig {
       fontConfig.hashCode ^
       role.hashCode ^
       devApiUrl.hashCode ^
-      prodApiUrl.hashCode;
+      prodApiUrl.hashCode ^
+      showLogs.hashCode;
 
   @override
   String toString() =>
-      'GeoMapConfig(apiKey: $apiKey, routeServiceKey: $routeServiceKey, mapType: $mapType, fontConfig: $fontConfig, role: $role, devApiUrl: $devApiUrl, prodApiUrl: $prodApiUrl)';
+      'GeoMapConfig(apiKey: $apiKey, routeServiceKey: $routeServiceKey, mapType: $mapType, fontConfig: $fontConfig, role: $role, devApiUrl: $devApiUrl, prodApiUrl: $prodApiUrl, showLogs: $showLogs)';
 }
