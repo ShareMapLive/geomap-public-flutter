@@ -23,23 +23,6 @@ class GeomapDriverInfoCardModel {
   /// Hidden when null.
   final String? description;
 
-  /// Manual start time override (milliseconds since epoch).
-  final int? startTime;
-
-  /// Manual end time override (milliseconds since epoch).
-  final int? endTime;
-
-  /// Optional manual override for distance text (e.g., "10.5 km").
-  final String? distance;
-
-  /// Optional manual override for duration text (e.g., "30 mins").
-  final String? time;
-
-  /// Optional manual override for average speed text (e.g., "45 km/h").
-  final String? averageSpeed;
-
-  /// Whether to force the card into avatar display mode.
-  final bool? isAvatar;
 
   /// Creates a [GeomapDriverInfoCardModel] for overriding card fields.
   const GeomapDriverInfoCardModel({
@@ -49,11 +32,5 @@ class GeomapDriverInfoCardModel {
     this.avatarUrl,
     this.phone,
     this.description,
-    this.startTime,
-    this.endTime,
-    this.distance,
-    this.time,
-    this.averageSpeed,
-    this.isAvatar,
   });
 }
