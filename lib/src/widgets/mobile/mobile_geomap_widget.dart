@@ -5,6 +5,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../base/base_geomap_widget.dart';
 import '../shared_geomap_components.dart';
+import '../components/geomap_collapsed_timeline.dart';
 
 /// Mobile-specific geomap widget with UI optimized for mobile devices
 class MobileGeoMapWidget extends StatelessWidget {
@@ -23,6 +24,12 @@ class MobileGeoMapWidget extends StatelessWidget {
   final Function(dynamic stop)? onStopItemPressed;
   final Function(String url)? onCopyPressed;
 
+  /// Optional model to override fields in [GeoMapInfoCard].
+  final GeomapInfoCardModel? infoCardModel;
+
+  /// Optional model to override fields in [GeoMapDriverInfoCard].
+  final GeomapDriverInfoCardModel? driverInfoCardModel;
+
   const MobileGeoMapWidget({
     super.key,
     required this.controller,
@@ -39,6 +46,8 @@ class MobileGeoMapWidget extends StatelessWidget {
     this.onToggleSheetPressed,
     this.onStopItemPressed,
     this.onCopyPressed,
+    this.infoCardModel,
+    this.driverInfoCardModel,
   });
 
   @override
@@ -109,16 +118,16 @@ class MobileGeoMapWidget extends StatelessWidget {
                         InkWell(
                           onTap: () {
                             controller.toggleSheet();
-                            onToggleSheetPressed?.call(controller.isSheetExpanded.value);
+                            onToggleSheetPressed
+                                ?.call(controller.isSheetExpanded.value);
                           },
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 16),
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                            borderRadius: BorderRadius.circular(8)
-                            ),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8)),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -131,7 +140,9 @@ class MobileGeoMapWidget extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Icon(
-                                  isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
                                   color: Colors.green,
                                   size: 20,
                                 ),
@@ -144,17 +155,21 @@ class MobileGeoMapWidget extends StatelessWidget {
                         if (isExpanded)
                           Flexible(
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 16,vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                               child: Column(
                                 children: [
-                                  if (controller.config.role == GeoMapRole.viewer)
+                                  if (controller.config.role ==
+                                      GeoMapRole.viewer)
                                     GeoMapDriverInfoCard(
                                       controller: controller,
                                       fontConfig: controller.config.fontConfig,
+                                      driverInfoCardModel: driverInfoCardModel,
                                     ),
                                   GeoMapInfoCard(
                                     controller: controller,
                                     fontConfig: controller.config.fontConfig,
+                                    infoCardModel: infoCardModel,
                                   ),
                                   GeoMapStopList(
                                     controller: controller,
@@ -162,11 +177,14 @@ class MobileGeoMapWidget extends StatelessWidget {
                                     onStopItemPressed: onStopItemPressed,
                                   ),
                                   GeoMapLinkCard(
-                                    url: controller.getPublicGeoMapUrl(geoMapCode),
+                                    url: controller
+                                        .getPublicGeoMapUrl(geoMapCode),
                                     fontConfig: controller.config.fontConfig,
                                     onCopyPressed: onCopyPressed,
                                   ),
-                                  const SizedBox(height: 50,)
+                                  const SizedBox(
+                                    height: 50,
+                                  )
                                 ],
                               ),
                             ),
@@ -176,6 +194,19 @@ class MobileGeoMapWidget extends StatelessWidget {
                   ),
                 ],
               ),
+            );
+          }),
+        ),
+
+        // Mobile collapsed timeline: shows when sheet is collapsed (mobile only)
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 140,
+          left: 0,
+          child: Obx(() {
+            final isExpanded = controller.isSheetExpanded.value;
+            if (isExpanded) return const SizedBox.shrink();
+            return GeoMapCollapsedTimeline(
+              controller: controller,
             );
           }),
         ),

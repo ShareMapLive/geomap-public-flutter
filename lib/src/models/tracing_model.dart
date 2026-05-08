@@ -49,7 +49,8 @@ class TracingModel {
       listGeofencingJson: json['listGeofencingJson'],
       objectId: json['objectId'],
       detect: json['detect'],
-      object: json['object'] != null ? ObjectModel.fromJson(json['object']) : null,
+      object:
+          json['object'] != null ? ObjectModel.fromJson(json['object']) : null,
       extraData: json['extraData'] != null
           ? ExtraData.fromJson(json['extraData'])
           : null,
@@ -88,7 +89,10 @@ class TracingModel {
       Map<String, dynamic> geofencingMap = listGeofencingJson;
       final values = <String>[];
       geofencingMap.forEach((key, value) {
-        if (value != null && value is Map && value['detect'] != null && value['title'] != null) {
+        if (value != null &&
+            value is Map &&
+            value['detect'] != null &&
+            value['title'] != null) {
           values.add('${value['detect']} ${value['title']}');
         }
       });
@@ -265,7 +269,10 @@ class GeofencingModel {
   static List<PointDataTracing>? parseDataFromJson(dynamic json) {
     if (json == null) return null;
     if (json is List) {
-      return json.map((e) => PointDataTracing.fromJson(e)).toList().cast<PointDataTracing>();
+      return json
+          .map((e) => PointDataTracing.fromJson(e))
+          .toList()
+          .cast<PointDataTracing>();
     }
     return null;
   }
@@ -279,7 +286,8 @@ class PointDataTracing {
   int? radius;
   String? detect;
 
-  PointDataTracing({this.uuid, this.title, this.lat, this.lng, this.radius, this.detect});
+  PointDataTracing(
+      {this.uuid, this.title, this.lat, this.lng, this.radius, this.detect});
 
   factory PointDataTracing.fromJson(Map<String, dynamic> json) {
     return PointDataTracing(

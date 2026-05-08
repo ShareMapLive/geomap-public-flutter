@@ -10,6 +10,7 @@ import '../models/map_geo_model.dart';
 import '../models/geofencing_model.dart';
 import '../models/tracing_model.dart';
 import 'map_colors.dart';
+import 'marker_z_indexes.dart';
 
 const double textSizeSMedium = 14.0;
 const double textSizeSmall = 12.0;
@@ -32,7 +33,7 @@ class MobileMarkerUtils {
     // Convert widget to bitmap descriptor for Google Maps
     final double scaleFactor =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(70, 70);
+    const logicalSize = Size(70, 70);
     final imageSize =
         Size(logicalSize.width * scaleFactor, logicalSize.height * scaleFactor);
 
@@ -49,7 +50,7 @@ class MobileMarkerUtils {
         userLocationModel.lng?.toDouble() ?? 0.0,
       ),
       icon: bitmapDescriptor,
-      zIndex: 6,
+      zIndex: MarkerZIndex.userGeoMapAvatar,
       onTap: () {
         onClick(userLocationModel);
       },
@@ -74,7 +75,8 @@ class MobileMarkerUtils {
         trackingConfig: trackingConfig,
         userAvatar: userLocationModel.linkAvatar,
       ),
-      key: ValueKey(userLocationModel.userId ?? 'user_${userLocationModel.lat}_${userLocationModel.lng}'),
+      key: ValueKey(userLocationModel.userId ??
+          'user_${userLocationModel.lat}_${userLocationModel.lng}'),
     );
   }
 
@@ -89,7 +91,7 @@ class MobileMarkerUtils {
       // Text-based marker
       return Stack(
         children: [
-          Container(
+          const SizedBox(
             width: 70,
             height: 70,
           ),
@@ -116,13 +118,14 @@ class MobileMarkerUtils {
                     final firstLine = words.sublist(0, 3).join(' ');
                     String secondLine = words.length <= 6
                         ? words.sublist(3).join(' ')
-                        : words.sublist(3, 6).join(' ') + "...";
+                        : "${words.sublist(3, 6).join(' ')}...";
                     displayName = '$firstLine\n$secondLine';
                   }
                   return Center(
                     child: Text(
                       displayName,
-                      style: TextStyle(fontSize: 11, color: MapColors.markerInfoBoxText),
+                      style: const TextStyle(
+                          fontSize: 11, color: MapColors.markerInfoBoxText),
                       maxLines: 2,
                       softWrap: true,
                       overflow: TextOverflow.ellipsis,
@@ -145,7 +148,7 @@ class MobileMarkerUtils {
       );
     } else if (trackingConfig?.typeAvatarOption == "emoji") {
       // Emoji-based marker
-      return Container(
+      return SizedBox(
         height: 30,
         width: 30,
         child: Text(
@@ -163,11 +166,11 @@ class MobileMarkerUtils {
       // Default avatar-based marker
       return Stack(
         children: [
-          Container(
+          const SizedBox(
             width: 70,
             height: 70,
           ),
-          Positioned(
+          const Positioned(
             bottom: 0,
             left: 0,
             right: 0,
@@ -196,7 +199,7 @@ class MobileMarkerUtils {
                   border: Border.all(color: MapColors.markerBorder, width: 2),
                   color: MapColors.markerBackground,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.person,
                   color: MapColors.markerText,
                   size: 20,
@@ -224,7 +227,7 @@ class MobileMarkerUtils {
     // Create the new marker widget based on the provided design
     final widget = Stack(
       children: [
-        Container(
+        const SizedBox(
           height: 120,
           width: 120,
         ),
@@ -234,7 +237,7 @@ class MobileMarkerUtils {
             child: Container(
               height: 55,
               width: 3,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.blue,
               ),
             )),
@@ -266,8 +269,8 @@ class MobileMarkerUtils {
             child: Container(
               height: 30,
               width: 30,
-              decoration:
-                  const BoxDecoration(shape: BoxShape.circle, color: Colors.blue),
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Colors.blue),
               child: Center(
                 child: Text(
                   // Replace with your desired icon based on PointPolygon data
@@ -283,14 +286,16 @@ class MobileMarkerUtils {
 
     final double scaleFactor =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(120, 120);
+    const logicalSize = Size(120, 120);
     final imageSize = Size(120 * scaleFactor, 120 * scaleFactor);
     final bitmapDescriptor = await widget.toBitmapDescriptor(
         logicalSize: logicalSize, imageSize: imageSize);
     return google_maps.Marker(
+      zIndex: MarkerZIndex.geofencingCenter,
       consumeTapEvents: true,
       anchor: const Offset(0.5, 0.5),
-      markerId: google_maps.MarkerId(item.uuid ?? 'point_${item.lat}_${item.lng}'),
+      markerId:
+          google_maps.MarkerId(item.uuid ?? 'point_${item.lat}_${item.lng}'),
       position: google_maps.LatLng(
         item.lat!.toDouble(),
         item.lng!.toDouble(),
@@ -327,7 +332,7 @@ class MobileMarkerUtils {
         },
         child: Stack(
           children: [
-            Container(
+            const SizedBox(
               height: 120,
               width: 120,
             ),
@@ -348,7 +353,8 @@ class MobileMarkerUtils {
                 child: Container(
                   height: 25,
                   width: 50,
-                  padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
                   decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -384,7 +390,8 @@ class MobileMarkerUtils {
           ],
         ),
       ),
-      key: ValueKey('center_${item.uuid ?? 'point_${item.lat}_${item.lng}_${index}'}'),
+      key: ValueKey(
+          'center_${item.uuid ?? 'point_${item.lat}_${item.lng}_$index'}'),
     );
   }
 
@@ -434,7 +441,6 @@ class MobileMarkerUtils {
     );
   }
 
-
   /// Build user check-in marker
   static Future<google_maps.Marker> buildUserCheckInMarker(
     UserCheckIn userCheckIn,
@@ -444,11 +450,10 @@ class MobileMarkerUtils {
       throw Exception('UserCheckIn has no coordinates');
     }
 
-    final widget = Container(
+    final widget = SizedBox(
       width: 45,
       height: 45,
-      child:
-      Image.asset(
+      child: Image.asset(
         'images/user_checkin_marker.png',
         package: 'geomap_package',
       ),
@@ -456,7 +461,7 @@ class MobileMarkerUtils {
 
     final double scaleFactor =
         PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final logicalSize = const Size(45, 45);
+    const logicalSize = Size(45, 45);
     final imageSize =
         Size(logicalSize.width * scaleFactor, logicalSize.height * scaleFactor);
     final bitmapDescriptor = await widget.toBitmapDescriptor(
@@ -477,7 +482,6 @@ class MobileMarkerUtils {
       },
     );
   }
-
 
   /// Build user check-in marker for Flutter Map on mobile
   static flutter_map.Marker buildUserCheckInMarkerForFlutterMap(
@@ -504,7 +508,8 @@ class MobileMarkerUtils {
           package: 'geomap_package',
         ),
       ),
-      key: ValueKey(userCheckIn.userJoinGeoMapUuid ?? 'checkin_${userCheckIn.lat}_${userCheckIn.lng}'),
+      key: ValueKey(userCheckIn.userJoinGeoMapUuid ??
+          'checkin_${userCheckIn.lat}_${userCheckIn.lng}'),
     );
   }
 
@@ -517,8 +522,10 @@ class MobileMarkerUtils {
     // Format time
     String formattedTime = "";
     if (userCheckIn.timeCheckIn != null) {
-      final dateTime = DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
-      formattedTime = "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
+      final dateTime =
+          DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
+      formattedTime =
+          "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
 
     final String address = userCheckIn.address ?? "";
@@ -549,7 +556,8 @@ class MobileMarkerUtils {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.person_outline, size: 20, color: Colors.grey),
+                  const Icon(Icons.person_outline,
+                      size: 20, color: Colors.grey),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -602,7 +610,8 @@ class MobileMarkerUtils {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                    const Icon(Icons.location_on_outlined,
+                        size: 18, color: Colors.grey),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -639,12 +648,14 @@ class MobileMarkerUtils {
       imageSize: imageSize,
     );
 
-
     return google_maps.Marker(
-      zIndex: 5,
+      zIndex: MarkerZIndex.userCheckInInfoPopup,
       consumeTapEvents: true,
-      markerId: google_maps.MarkerId("checkin_info_${userCheckIn.userJoinGeoMapUuid}"),
-      position: google_maps.LatLng(userCheckIn.lat!.toDouble(), userCheckIn.lng!.toDouble()),
+      anchor: const Offset(0.5, 1.25),
+      markerId: google_maps.MarkerId(
+          "checkin_info_${userCheckIn.userJoinGeoMapUuid}"),
+      position: google_maps.LatLng(
+          userCheckIn.lat!.toDouble(), userCheckIn.lng!.toDouble()),
       icon: bitmapDescriptor,
       onTap: () => onClick(),
     );
@@ -659,8 +670,10 @@ class MobileMarkerUtils {
     // Format time
     String formattedTime = "";
     if (userCheckIn.timeCheckIn != null) {
-      final dateTime = DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
-      formattedTime = "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
+      final dateTime =
+          DateTime.fromMillisecondsSinceEpoch(userCheckIn.timeCheckIn!);
+      formattedTime =
+          "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} ngày ${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
 
     final String address = userCheckIn.address ?? "";
@@ -701,7 +714,8 @@ class MobileMarkerUtils {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.person_outline, size: 20, color: Colors.grey),
+                      const Icon(Icons.person_outline,
+                          size: 20, color: Colors.grey),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -729,7 +743,8 @@ class MobileMarkerUtils {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.access_time, size: 18, color: Colors.grey),
+                        const Icon(Icons.access_time,
+                            size: 18, color: Colors.grey),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -751,7 +766,8 @@ class MobileMarkerUtils {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                        const Icon(Icons.location_on_outlined,
+                            size: 18, color: Colors.grey),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -781,5 +797,183 @@ class MobileMarkerUtils {
       key: ValueKey("checkin_info_${userCheckIn.userJoinGeoMapUuid}"),
     );
   }
-}
 
+  static google_maps.BitmapDescriptor? _cachedDotBitmap;
+
+  /// Build a small green dot marker for a tracing path point (Google Maps)
+  static Future<google_maps.Marker> buildTracingDotMarker({
+    required double lat,
+    required double lng,
+    required String markerId,
+    String? time,
+    String? address,
+    required void Function() onClick,
+  }) async {
+    if (_cachedDotBitmap == null) {
+      final widget = Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.green,
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+      );
+
+      final double scaleFactor =
+          PlatformDispatcher.instance.views.first.devicePixelRatio;
+      const logicalSize = Size(14, 14);
+      final imageSize = Size(
+          logicalSize.width * scaleFactor, logicalSize.height * scaleFactor);
+
+      _cachedDotBitmap = await widget.toBitmapDescriptor(
+        logicalSize: logicalSize,
+        imageSize: imageSize,
+      );
+    }
+
+    return google_maps.Marker(
+      markerId: google_maps.MarkerId(markerId),
+      position: google_maps.LatLng(lat, lng),
+      icon: _cachedDotBitmap!,
+      zIndex: MarkerZIndex.tracingDot,
+      anchor: const Offset(0.5, 0.5),
+      onTap: onClick,
+    );
+  }
+
+  static Future<google_maps.Marker> buildTracingDotInfoMarker({
+    required double lat,
+    required double lng,
+    required String markerId,
+    String? time,
+    String? address,
+    bool isAvatar = false,
+    required void Function() onClose,
+  }) async {
+    String formattedTime = '';
+    if (time != null && time.isNotEmpty) {
+      try {
+        DateTime dt;
+        if (time.contains('T') || time.contains('Z')) {
+          dt = DateTime.parse(time).toLocal();
+        } else {
+          dt = DateTime.fromMillisecondsSinceEpoch(int.parse(time)).toLocal();
+        }
+        formattedTime =
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ngày ${dt.day}/${dt.month}/${dt.year}';
+      } catch (_) {
+        formattedTime = time;
+      }
+    }
+
+    final widget = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.4)),
+            boxShadow: const [
+              BoxShadow(
+                  color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.green),
+                  const SizedBox(width: 4),
+                  const Flexible(
+                    child: Text(
+                      'Vị trí',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: onClose,
+                    child:
+                        const Icon(Icons.close, size: 16, color: Colors.grey),
+                  ),
+                ],
+              ),
+              if (formattedTime.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        formattedTime,
+                        style: const TextStyle(
+                            fontSize: textSizeSmall, color: Colors.black87),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (address != null && address.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        address,
+                        style: const TextStyle(
+                            fontSize: textSizeSmall, color: Colors.black87),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        CustomPaint(
+          size: const Size(10, 6),
+          painter: TrianglePainter(color: Colors.white),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+
+    final double scaleFactor =
+        PlatformDispatcher.instance.views.first.devicePixelRatio;
+    const logicalSize = Size(200, 160);
+    final imageSize =
+        Size(logicalSize.width * scaleFactor, logicalSize.height * scaleFactor);
+    final bitmapDescriptor = await widget.toBitmapDescriptor(
+      logicalSize: logicalSize,
+      imageSize: imageSize,
+    );
+
+    return google_maps.Marker(
+      zIndex: MarkerZIndex.tracingDotInfoPopup,
+      consumeTapEvents: true,
+      markerId: google_maps.MarkerId(markerId),
+      position: google_maps.LatLng(lat, lng),
+      icon: bitmapDescriptor,
+      anchor: isAvatar ? const Offset(0.5, 1.22) : const Offset(0.5, 1.15),
+      onTap: onClose,
+    );
+  }
+}

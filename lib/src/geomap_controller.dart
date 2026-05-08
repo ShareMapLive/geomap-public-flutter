@@ -11,7 +11,7 @@ import 'package:latlong2/latlong.dart' as latlong;
 
 import 'api/api_config.dart';
 import 'api/api_service.dart';
-import 'models/dataset_model.dart';
+
 import 'models/geofencing_model.dart';
 import 'models/geomap_config.dart';
 import 'models/geomap_type.dart';
@@ -41,12 +41,11 @@ class GeoMapController extends GetxController {
   // ════════════════════════════════════════════════════════════════════════════
 
   /// The package version
-  static final RxString _version = '2.0.0'.obs;
+  static final RxString _version = '2.1.0'.obs;
   static String get version => _version.value;
 
   /// Completer for tracking initialization status
   final Completer<void> _initCompleter = Completer<void>();
-
 
   /// The configuration for the current geomap
   final GeoMapConfig config;
@@ -61,6 +60,13 @@ class GeoMapController extends GetxController {
   GeoMapController({
     required this.config,
   });
+
+  /// Internal logger that respects [config.showLogs]
+  void _log(String message) {
+    if (config.showLogs) {
+      debugPrint('[GeoMap] $message');
+    }
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 2: UI STATE - Status Card (reload, loading, time display)
@@ -79,9 +85,17 @@ class GeoMapController extends GetxController {
 
   bool get isSidePanelExpanded => _isSidePanelExpanded.value;
 
+  /// Whether the collapsed timeline (left side) is expanded
+  final RxBool isTimelineExpanded = false.obs;
+
   /// Toggle mobile bottom sheet expanded/collapsed
   void toggleSheet() {
     isSheetExpanded.value = !isSheetExpanded.value;
+  }
+
+  /// Toggle timeline expanded/collapsed
+  void toggleTimeline() {
+    isTimelineExpanded.value = !isTimelineExpanded.value;
   }
 
   void expandSheet() {
@@ -111,8 +125,13 @@ class GeoMapController extends GetxController {
 
   List<String> get driverUuids => _driverUuids.toList();
 
-  /// Date extracted from the API key JWT token (for filtering tracing data)
-  final Rx<int?> _tokenDate = Rx<int?>(null);
+  /// Start time extracted from the API key JWT token (milliseconds since epoch).
+  /// Set from [JwtTokenModel.startTime] if present, otherwise derived from [JwtTokenModel.date].
+  final Rx<int?> _tokenStartTime = Rx<int?>(null);
+
+  /// End time extracted from the API key JWT token (milliseconds since epoch).
+  /// Set from [JwtTokenModel.endTime] if present, otherwise derived from [JwtTokenModel.date].
+  final Rx<int?> _tokenEndTime = Rx<int?>(null);
 
   /// Timer for automatic refresh of driver tracing data
   Timer? _driverTracingRefreshTimer;
@@ -132,13 +151,108 @@ class GeoMapController extends GetxController {
 
   MapGeoModel? get geoMapInfo => _geoMapInfo.value;
 
-  /// Gets the formatted date from JWT token for display
+  /// Gets the formatted date for display in GeoMap Info Card.
+  /// Shows the currently selected day (from dropdown) if available,
+  /// otherwise falls back to the start day of the token range.
   String get displayDate {
-    if (_tokenDate.value != null) {
-      final date = DateTime.fromMillisecondsSinceEpoch(_tokenDate.value!);
-      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    // Prefer the selected day (set by the dropdown)
+    final selected = _selectedDay.value;
+    if (selected != null) {
+      return '${selected.day.toString().padLeft(2, '0')}/${selected.month.toString().padLeft(2, '0')}/${selected.year}';
     }
-    return '-';
+    final start = _tokenStartTime.value;
+    if (start == null) return '-';
+    final s = DateTime.fromMillisecondsSinceEpoch(start).toLocal();
+    return '${s.day.toString().padLeft(2, '0')}/${s.month.toString().padLeft(2, '0')}/${s.year}';
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SECTION 4b: DATE RANGE - Multi-day dropdown state
+  // ════════════════════════════════════════════════════════════════════════════
+
+  /// All available days in the token date range (local dates)
+  final RxList<DateTime> _availableDays = <DateTime>[].obs;
+
+  List<DateTime> get availableDays => _availableDays.toList();
+
+  /// Currently selected day (null = no day selected, use full range)
+  final Rx<DateTime?> _selectedDay = Rx<DateTime?>(null);
+
+  DateTime? get selectedDay => _selectedDay.value;
+
+  /// Returns true when the token time range spans more than 1 calendar day (local)
+  bool get isMultiDay => _availableDays.length > 1;
+
+  /// Compute the list of available days from startTime..endTime
+  void _computeAvailableDays() {
+    _availableDays.clear();
+    _selectedDay.value = null;
+    final start = _tokenStartTime.value;
+    final end = _tokenEndTime.value;
+    if (start == null) return;
+    final startLocal = DateTime.fromMillisecondsSinceEpoch(start).toLocal();
+    final startDay =
+        DateTime(startLocal.year, startLocal.month, startLocal.day);
+    if (end == null) {
+      _availableDays.add(startDay);
+      return;
+    }
+    final endLocal = DateTime.fromMillisecondsSinceEpoch(end).toLocal();
+    final endDay = DateTime(endLocal.year, endLocal.month, endLocal.day);
+    DateTime current = startDay;
+    while (!current.isAfter(endDay)) {
+      _availableDays.add(current);
+      current = current.add(const Duration(days: 1));
+    }
+    // Auto-select last day
+    if (_availableDays.isNotEmpty) {
+      _selectedDay.value = _availableDays.last;
+    }
+  }
+
+  /// Called when user selects a day from the dropdown.
+  /// Reloads driver tracing data for that day's range.
+  Future<void> selectDay(DateTime day, String geoMapCode) async {
+    _selectedDay.value = day;
+    if (_isLoading.value) return;
+    _isLoading.value = true;
+    try {
+      await _loadDriverTracingData(geoMapCode);
+      await _loadCheckInMarkers();
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  /// Returns effective startTime for API calls.
+  /// If a day is selected, returns start of that local day in ms.
+  int _getEffectiveApiStartTime() {
+    final selected = _selectedDay.value;
+    if (selected != null) {
+      return selected.millisecondsSinceEpoch;
+    }
+    return _getStartTimeFromTokenDate();
+  }
+
+  /// Returns effective endTime for API calls.
+  /// If a day is selected, returns end of that local day (23:59:59.999) capped at tokenEndTime for the last day.
+  int _getEffectiveApiEndTime() {
+    final selected = _selectedDay.value;
+    if (selected != null) {
+      final tokenEnd = _tokenEndTime.value;
+      final days = _availableDays;
+      final isLastDay = days.isNotEmpty &&
+          selected.year == days.last.year &&
+          selected.month == days.last.month &&
+          selected.day == days.last.day;
+      if (isLastDay && tokenEnd != null) {
+        return tokenEnd;
+      }
+      return DateTime(
+              selected.year, selected.month, selected.day, 23, 59, 59, 999)
+          .millisecondsSinceEpoch;
+    }
+    return _getEndTimeFromTokenDate();
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -148,8 +262,6 @@ class GeoMapController extends GetxController {
   /// List of geofencing data (points/polygons) - the "stops" in the route
   final RxList<PublicGeofencingModel> _stopList = <PublicGeofencingModel>[].obs;
 
-  List<PublicGeofencingModel> get stopList => _stopList;
-
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 6: LINK CARD - Public geomap URL
   // ════════════════════════════════════════════════════════════════════════════
@@ -158,8 +270,8 @@ class GeoMapController extends GetxController {
   String getPublicGeoMapUrl(String geoMapCode) {
     final isDev = config.environment == Environment.development;
     final baseUrl = isDev
-        ? 'https://dev-business.sharemap.live'
-        : 'https://business.sharemap.live';
+        ? 'https://dev-public-sharemap.web.app'
+        : 'https://map.sharemap.live';
     final token = _cleanApiKey;
 
     String url = '$baseUrl/public-geomap/$geoMapCode?token=$token';
@@ -193,10 +305,6 @@ class GeoMapController extends GetxController {
 
   /// Google Map controller (web/mobile) to control camera programmatically
   google_maps.GoogleMapController? googleMapController;
-
-  /// List of route coordinates (LatLng pairs) for drawing routes
-  final RxList<List<latlong.LatLng>> _routeCoordinates =
-      <List<latlong.LatLng>>[].obs;
 
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 8: MAP MARKERS - Google Maps
@@ -250,6 +358,20 @@ class GeoMapController extends GetxController {
 
   List<google_maps.Polyline> get googleDriverPathPolylines =>
       _googleDriverPathPolylines;
+
+  /// Driver tracing dot markers - green dots along the traveled path (Google Maps)
+  final RxList<google_maps.Marker> _googleTracingDotMarkers =
+      <google_maps.Marker>[].obs;
+
+  List<google_maps.Marker> get googleTracingDotMarkers =>
+      _googleTracingDotMarkers;
+
+  /// Tracing dot info popup markers (Google Maps)
+  final RxList<google_maps.Marker> _googleTracingInfoMarkers =
+      <google_maps.Marker>[].obs;
+
+  List<google_maps.Marker> get googleTracingInfoMarkers =>
+      _googleTracingInfoMarkers;
 
   /// Current location marker (Google Maps - specific for Web)
   final Rx<google_maps.Marker?> _googleCurrentLocationMarker =
@@ -355,9 +477,6 @@ class GeoMapController extends GetxController {
 
   List<google_maps.Polyline> get googleMapsPolylines => _googleRoutePolylines;
 
-  List<google_maps.Polyline> get googleMapsTracingPolylines =>
-      _googleDriverPathPolylines;
-
   // Flutter Map markers compatibility
   List<flutter_map.Marker> get flutterMapUserMarkers => _flutterDriverMarkers;
 
@@ -406,9 +525,10 @@ class GeoMapController extends GetxController {
             apiKey: _cleanApiKey,
             routeServiceKey: config.routeServiceKey,
             baseUrl: customBaseUrl,
+            showLogs: config.showLogs,
           ));
     } catch (e) {
-      print('Error initializing GeoMapController: $e');
+      _log('Error initializing GeoMapController: $e');
     } finally {
       _isInitializing = false;
       if (!_initCompleter.isCompleted) {
@@ -416,7 +536,6 @@ class GeoMapController extends GetxController {
       }
     }
   }
-
 
   @override
   void onInit() {
@@ -454,7 +573,7 @@ class GeoMapController extends GetxController {
       if (!force && _lastLoadedCode == geoMapCode) return;
 
       _lastLoadedCode = geoMapCode;
-      print('getAllData: Starting data load sequence for $geoMapCode');
+      _log('getAllData: Starting data load sequence for $geoMapCode');
       // Step 1: Parse JWT token
       _parseJwtToken(_cleanApiKey);
 
@@ -487,7 +606,6 @@ class GeoMapController extends GetxController {
       if (config.role != GeoMapRole.driver) {
         _startDriverTracingRefreshTimer(geoMapCode);
       }
-
     } finally {
       _isLoading.value = false;
     }
@@ -515,7 +633,7 @@ class GeoMapController extends GetxController {
     _geoMapInfo.value = detail;
 
     if (detail != null) {
-      print('Loaded GeoMap info: ${detail.name}');
+      _log('Loaded GeoMap info: ${detail.name}');
     }
   }
 
@@ -524,80 +642,105 @@ class GeoMapController extends GetxController {
   Future<void> _loadDatasetDetail() async {
     final datasetCode = _geoMapInfo.value?.datasetCode;
     if (datasetCode == null || datasetCode.isEmpty) {
-      print('loadDatasetDetail: No datasetCode available');
+      _log('loadDatasetDetail: No datasetCode available');
       _datasetAutoRunTime = null;
       return;
     }
 
-    print('Loading dataset detail for code: $datasetCode');
+    _log('Loading dataset detail for code: $datasetCode');
     final dataset = await _apiService.getDatasetDetail(datasetCode);
 
     if (dataset != null) {
       _datasetAutoRunTime = dataset.automaticRunTime?.toInt();
-      print('Loaded dataset detail. automaticRunTime: $_datasetAutoRunTime');
+      _log('Loaded dataset detail. automaticRunTime: $_datasetAutoRunTime');
     } else {
       _datasetAutoRunTime = null;
-      print('Failed to load dataset detail or it returned null');
+      _log('Failed to load dataset detail or it returned null');
     }
   }
-
-
 
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 14: JWT TOKEN PARSING
   // ════════════════════════════════════════════════════════════════════════════
 
-  /// Parse JWT token to extract driver UUIDs and date
+  /// Parse JWT token to extract driver UUIDs, startTime and endTime.
   List<String> _parseJwtToken(String jwtToken) {
     try {
       if (JwtDecoder.isExpired(jwtToken)) {
-        print('JWT token is expired');
+        _log('JWT token is expired');
         return [];
       }
 
       final payload = JwtDecoder.decode(jwtToken);
-      print('JWT Payload: $payload');
+      _log('JWT Payload: $payload');
 
       final jwtModel = JwtTokenModel.fromJson(payload);
-      print(
-          'Parsed JWT - listUuid: ${jwtModel.listUuid}, date: ${jwtModel.date}');
+      _log(
+          'Parsed JWT - listUuid: ${jwtModel.listUuid}, startTime: ${jwtModel.startTime}, endTime: ${jwtModel.endTime}, date(legacy): ${jwtModel.date}');
 
       // Extract driver UUIDs
       if (jwtModel.listUuid != null) {
         _driverUuids.assignAll(jwtModel.listUuid!);
       }
 
-      // Extract date
-      _tokenDate.value = jwtModel.date;
+      // 1. PRODUCTION LOGIC: Prefer explicit startTime/endTime; fall back to legacy date field
+      if (jwtModel.startTime != null) {
+        _tokenStartTime.value = jwtModel.startTime;
+      } else if (jwtModel.date != null) {
+        final d = DateTime.fromMillisecondsSinceEpoch(jwtModel.date!);
+        _tokenStartTime.value =
+            DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
+      }
 
-      print('Extracted driver UUIDs: $_driverUuids');
-      print('Extracted date: ${_tokenDate.value}');
+      if (jwtModel.endTime != null) {
+        _tokenEndTime.value = jwtModel.endTime;
+      } else if (jwtModel.date != null) {
+        final d = DateTime.fromMillisecondsSinceEpoch(jwtModel.date!);
+        _tokenEndTime.value = DateTime(d.year, d.month, d.day, 23, 59, 59, 999)
+            .millisecondsSinceEpoch;
+      }
+
+      // 2. TODO: TESTING ONLY — Force specific range for testing if needed
+      // To disable test overrides, comment out the lines below
+      // const int testStartTime = 1742403600000; // 2025-03-20
+      // const int testEndTime = 1742835600000; // 2025-03-25
+      // _log(
+      //     'TEST OVERRIDE ACTIVE - Forcing range: ${DateTime.fromMillisecondsSinceEpoch(testStartTime)} to ${DateTime.fromMillisecondsSinceEpoch(testEndTime)}');
+      // _tokenStartTime.value = testStartTime;
+      // _tokenEndTime.value = testEndTime;
+
+      _log('Final driver UUIDs: $_driverUuids');
+      _log(
+          'Final startTime: ${_tokenStartTime.value}, endTime: ${_tokenEndTime.value}');
+
+      _computeAvailableDays();
       return _driverUuids.toList();
     } catch (e, stackTrace) {
-      print('Error parsing JWT token: $e');
-      print('Stack trace: $stackTrace');
+      _log('Error parsing JWT token: $e');
+      _log('Stack trace: $stackTrace');
       return [];
     }
   }
 
-  /// Get start time (beginning of the day) from JWT date
+  /// Get start time from JWT token.
+  /// Uses [_tokenStartTime] directly if set (from JWT startTime field).
+  /// Otherwise computes start-of-day from the legacy date field.
+  /// Fallback: 24 hours ago.
   int _getStartTimeFromTokenDate() {
-    if (_tokenDate.value != null) {
-      final date = DateTime.fromMillisecondsSinceEpoch(_tokenDate.value!);
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      return startOfDay.millisecondsSinceEpoch;
+    if (_tokenStartTime.value != null) {
+      return _tokenStartTime.value!;
     }
     // Fallback to 24 hours ago
     return DateTime.now().millisecondsSinceEpoch - 86400000;
   }
 
-  /// Get end time (end of the day) from JWT date
+  /// Get end time from JWT token.
+  /// Uses [_tokenEndTime] directly if set (from JWT endTime field).
+  /// Otherwise computes end-of-day from the legacy date field.
+  /// Fallback: current time.
   int _getEndTimeFromTokenDate() {
-    if (_tokenDate.value != null) {
-      final date = DateTime.fromMillisecondsSinceEpoch(_tokenDate.value!);
-      final endOfDay =
-          DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
-      return endOfDay.millisecondsSinceEpoch;
+    if (_tokenEndTime.value != null) {
+      return _tokenEndTime.value!;
     }
     // Fallback to current time
     return DateTime.now().millisecondsSinceEpoch;
@@ -610,23 +753,24 @@ class GeoMapController extends GetxController {
   /// Load driver tracing data with user UUIDs
   Future<void> _loadDriverTracingData(String geoMapCode) async {
     if (_driverUuids.isEmpty) {
-      print('No driver UUIDs, skipping driver tracing data load');
+      _log('No driver UUIDs, skipping driver tracing data load');
       return;
     }
 
-    final startTime = _getStartTimeFromTokenDate();
-    final endTime = _getEndTimeFromTokenDate();
+    final startTime = _getEffectiveApiStartTime();
+    final endTime = _getEffectiveApiEndTime();
 
     // Get datasetCode from the loaded geomap info
     final datasetCode = _geoMapInfo.value?.datasetCode;
 
     if (datasetCode == null || datasetCode.isEmpty) {
       // datasetCode chưa có -> chỉ hiển thị points, không load tracing, không crash
-      print('datasetCode is null, skipping dataset tracking load');
+      _log('datasetCode is null, skipping dataset tracking load');
       return;
     }
 
-    print('Loading dataset tracking data for datasetCode: $datasetCode, uuid: ${_driverUuids[0]}');
+    _log(
+        'Loading dataset tracking data for datasetCode: $datasetCode, uuid: ${_driverUuids[0]}');
 
     await _loadDatasetTrackingByTimeRange(
       datasetCode: datasetCode,
@@ -650,7 +794,8 @@ class GeoMapController extends GetxController {
   }) async {
     if (datasetCode.isEmpty) return;
 
-    final listTracingModel = await _apiService.getDatasetTrackingListByTimeRange(
+    final listTracingModel =
+        await _apiService.getDatasetTrackingListByTimeRange(
       key: datasetCode,
       objectId: objectId,
       startTime: startTime,
@@ -672,14 +817,14 @@ class GeoMapController extends GetxController {
   /// Start automatic refresh timer for driver tracing data
   void _startDriverTracingRefreshTimer(String geoMapCode) {
     if (_driverUuids.isEmpty) {
-      print('No driver UUIDs, skipping refresh timer');
+      _log('No driver UUIDs, skipping refresh timer');
       return;
     }
 
     final datasetCode = _geoMapInfo.value?.datasetCode;
     if (datasetCode == null || datasetCode.isEmpty) {
       // Nếu không có datasetCode thì không cần refresh timer
-      print('No datasetCode, skipping refresh timer');
+      _log('No datasetCode, skipping refresh timer');
       return;
     }
 
@@ -687,12 +832,13 @@ class GeoMapController extends GetxController {
 
     // Ưu tiên dùng automaticRunTime từ dataset detail, fallback về 1 phút
     final autoRunTime = _datasetAutoRunTime ?? 1;
-    print('Starting driver tracing refresh timer: $autoRunTime minutes (datasetCode: $datasetCode)');
+    _log(
+        'Starting driver tracing refresh timer: $autoRunTime minutes (datasetCode: $datasetCode)');
 
     _driverTracingRefreshTimer = Timer.periodic(
       Duration(minutes: autoRunTime),
       (timer) async {
-        print('Auto-refreshing driver tracing data');
+        _log('Auto-refreshing driver tracing data');
         await _loadDriverTracingData(geoMapCode);
         await _loadCheckInMarkers();
       },
@@ -704,11 +850,10 @@ class GeoMapController extends GetxController {
     _googleDriverMarkers.clear();
     _flutterDriverMarkers.clear();
 
-    final List<List<latlong.LatLng>> routeCoordinates = [];
     final tracingList = _driverTracingData.value?.geoMapTracing;
 
     if (tracingList != null && tracingList.isNotEmpty) {
-      print('Creating driver markers from ${tracingList.length} tracing items');
+      _log('Creating driver markers from ${tracingList.length} tracing items');
 
       // Create marker for the first (latest) item
       final tracing = tracingList[0];
@@ -727,10 +872,16 @@ class GeoMapController extends GetxController {
           avatarLink = tracing.extraData!.avatar;
         }
 
+        String? address;
+        if (tracing.extraData?.address != null) {
+          address = tracing.extraData!.address;
+        }
+
         final user = UserJoinGeoMap(
           name: tracing.name,
           userId: tracing.uuid,
           linkAvatar: avatarLink,
+          address: address,
           lat: lat,
           lng: lng,
           time: _formatTracingTime(tracing.time),
@@ -740,46 +891,65 @@ class GeoMapController extends GetxController {
           _createGoogleDriverMarker(user);
         } else {
           final marker = kIsWeb
-              ? WebMarkerUtils.buildUserGeoMapMarkerForFlutterMap(user,
-                  _geoMapInfo.value?.trackingVehicleConfiguration, (user) {})
-              : MobileMarkerUtils.buildUserGeoMapMarkerForFlutterMap(user,
-                  _geoMapInfo.value?.trackingVehicleConfiguration, (user) {});
+              ? WebMarkerUtils.buildUserGeoMapMarkerForFlutterMap(
+                  user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+                  if (u.lat != null && u.lng != null) {
+                    _handleTracingDotClick(
+                        'driver_${u.userId}', u.lat!, u.lng!, u.time, u.address,
+                        isAvatar: true);
+                  }
+                })
+              : MobileMarkerUtils.buildUserGeoMapMarkerForFlutterMap(
+                  user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+                  if (u.lat != null && u.lng != null) {
+                    _handleTracingDotClick(
+                        'driver_${u.userId}', u.lat!, u.lng!, u.time, u.address,
+                        isAvatar: true);
+                  }
+                });
           _flutterDriverMarkers.add(marker);
         }
       }
 
       // Draw driver's traveled path
       if (tracingList.length > 1) {
-        final List<latlong.LatLng> driverPath = [];
-
-        for (final tracing in tracingList) {
-          if (tracing.object?.coordinates != null &&
-              tracing.object!.coordinates!.length >= 2) {
-            final lng = tracing.object!.coordinates![0].toDouble();
-            final lat = tracing.object!.coordinates![1].toDouble();
-            driverPath.add(latlong.LatLng(lat, lng));
-          }
-        }
-
-        if (driverPath.length > 1) {
-          print('Created driver path with ${driverPath.length} points. Adding to routeCoordinates.');
-          routeCoordinates.add(driverPath);
-          _processDriverPathPolylines(routeCoordinates);
+        if (config.mapType == GeoMapType.googleMap) {
+          _buildTracingDotMarkersDirectly(tracingList);
         } else {
-          print('Driver path only has ${driverPath.length} points, not enough to draw a line.');
+          final List<latlong.LatLng> driverPath = [];
+
+          for (final tracing in tracingList) {
+            if (tracing.object?.coordinates != null &&
+                tracing.object!.coordinates!.length >= 2) {
+              final lng = tracing.object!.coordinates![0].toDouble();
+              final lat = tracing.object!.coordinates![1].toDouble();
+              driverPath.add(latlong.LatLng(lat, lng));
+            }
+          }
+
+          if (driverPath.length > 1) {
+            _log(
+                'Created driver path with ${driverPath.length} points. Adding to routeCoordinates.');
+            _processFlutterDriverPathPolylines([driverPath]);
+          } else {
+            _log(
+                'Driver path only has ${driverPath.length} points, not enough to draw a line.');
+          }
         }
       }
     } else {
-      print('No tracing data, clearing driver path polylines');
+      _log('No tracing data, clearing driver path polylines');
       _googleDriverPathPolylines.clear();
       _flutterDriverPathPolylines.clear();
+      _googleTracingDotMarkers.clear();
+      _googleTracingInfoMarkers.clear();
 
       // Fallback: use userJoinGeoMap from geomap info
       final usersToDisplay = (_geoMapInfo.value?.userJoinGeoMap ?? [])
           .where((user) => _driverUuids.contains(user.userId))
           .toList();
 
-      print('Fallback to userJoinGeoMap: ${usersToDisplay.length} users');
+      _log('Fallback to userJoinGeoMap: ${usersToDisplay.length} users');
 
       for (final user in usersToDisplay) {
         if (user.lat != null && user.lng != null) {
@@ -787,10 +957,22 @@ class GeoMapController extends GetxController {
             _createGoogleDriverMarker(user);
           } else {
             final marker = kIsWeb
-                ? WebMarkerUtils.buildUserGeoMapMarkerForFlutterMap(user,
-                    _geoMapInfo.value?.trackingVehicleConfiguration, (user) {})
-                : MobileMarkerUtils.buildUserGeoMapMarkerForFlutterMap(user,
-                    _geoMapInfo.value?.trackingVehicleConfiguration, (user) {});
+                ? WebMarkerUtils.buildUserGeoMapMarkerForFlutterMap(
+                    user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+                    if (u.lat != null && u.lng != null) {
+                      _handleTracingDotClick('driver_${u.userId}', u.lat!,
+                          u.lng!, u.time, u.address,
+                          isAvatar: true);
+                    }
+                  })
+                : MobileMarkerUtils.buildUserGeoMapMarkerForFlutterMap(
+                    user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+                    if (u.lat != null && u.lng != null) {
+                      _handleTracingDotClick('driver_${u.userId}', u.lat!,
+                          u.lng!, u.time, u.address,
+                          isAvatar: true);
+                    }
+                  });
             _flutterDriverMarkers.add(marker);
           }
         }
@@ -803,46 +985,136 @@ class GeoMapController extends GetxController {
     try {
       final marker = kIsWeb
           ? await WebMarkerUtils.buildUserGeoMapMarker(
-              user, _geoMapInfo.value?.trackingVehicleConfiguration, (user) {})
+              user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+              if (u.lat != null && u.lng != null) {
+                _handleTracingDotClick(
+                    'driver_${u.userId}', u.lat!, u.lng!, u.time, u.address,
+                    isAvatar: true);
+              }
+            })
           : await MobileMarkerUtils.buildUserGeoMapMarker(
-              user, _geoMapInfo.value?.trackingVehicleConfiguration, (user) {});
+              user, _geoMapInfo.value?.trackingVehicleConfiguration, (u) {
+              if (u.lat != null && u.lng != null) {
+                _handleTracingDotClick(
+                    'driver_${u.userId}', u.lat!, u.lng!, u.time, u.address,
+                    isAvatar: true);
+              }
+            });
       _googleDriverMarkers.add(marker);
-      print('Created Google driver marker at ${marker.position}');
+      _log('Created Google driver marker at ${marker.position}');
     } catch (e) {
-      print('Error creating Google driver marker: $e');
+      _log('Error creating Google driver marker: $e');
     }
   }
 
-  /// Process driver path polylines (green color for traveled path)
-  void _processDriverPathPolylines(
+  /// Process driver path for Flutter Map (polylines)
+  void _processFlutterDriverPathPolylines(
       List<List<latlong.LatLng>> routeCoordinates) {
-    print('Processing ${routeCoordinates.length} driver path polylines');
-    final Color pathColor = Colors.green;
+    _log(
+        'Processing ${routeCoordinates.length} driver path route(s) for Flutter Map');
+    const Color pathColor = Colors.green;
 
     if (routeCoordinates.isEmpty) {
-      _googleDriverPathPolylines.clear();
       _flutterDriverPathPolylines.clear();
       return;
     }
 
-    if (config.mapType == GeoMapType.googleMap) {
-      final polylines = <google_maps.Polyline>[];
-      for (int i = 0; i < routeCoordinates.length; i++) {
-        polylines.add(
-          GoogleMapMarkerUtils.buildRouteTracingPolyline(
-              routeCoordinates[i], pathColor, i),
-        );
+    final polylines = <flutter_map.Polyline>[];
+    for (int i = 0; i < routeCoordinates.length; i++) {
+      polylines.add(
+        FlutterMapMarkerUtils.buildRouteTracingPolyline(
+            routeCoordinates[i], pathColor, i),
+      );
+    }
+    _flutterDriverPathPolylines.assignAll(polylines);
+  }
+
+  /// Build tracing dot markers directly from TracingModel list (Google Maps)
+  void _buildTracingDotMarkersDirectly(List<TracingModel> tracingList) async {
+    _googleTracingDotMarkers.clear();
+    _googleTracingInfoMarkers.clear();
+
+    final List<google_maps.Marker> markers = [];
+    int globalIndex = 0;
+
+    for (final tracingItem in tracingList) {
+      if (tracingItem.object?.coordinates != null &&
+          tracingItem.object!.coordinates!.length >= 2) {
+        final lng = tracingItem.object!.coordinates![0].toDouble();
+        final lat = tracingItem.object!.coordinates![1].toDouble();
+
+        final markerId = 'tracing_dot_$globalIndex';
+        final time = tracingItem.time;
+        final address = tracingItem.extraData?.address;
+
+        try {
+          final marker = kIsWeb
+              ? await WebMarkerUtils.buildTracingDotMarker(
+                  lat: lat,
+                  lng: lng,
+                  markerId: markerId,
+                  time: time,
+                  address: address,
+                  onClick: () =>
+                      _handleTracingDotClick(markerId, lat, lng, time, address),
+                )
+              : await MobileMarkerUtils.buildTracingDotMarker(
+                  lat: lat,
+                  lng: lng,
+                  markerId: markerId,
+                  time: time,
+                  address: address,
+                  onClick: () =>
+                      _handleTracingDotClick(markerId, lat, lng, time, address),
+                );
+          markers.add(marker);
+        } catch (e) {
+          _log('Error creating tracing dot marker $globalIndex: $e');
+        }
+        globalIndex++;
       }
-      _googleDriverPathPolylines.assignAll(polylines);
+    }
+    _googleTracingDotMarkers.assignAll(markers);
+  }
+
+  /// Handle click on a tracing dot marker – toggle info popup
+  void _handleTracingDotClick(
+      String markerId, double lat, double lng, String? time, String? address,
+      {bool isAvatar = false}) async {
+    final infoId = 'tracing_info_$markerId';
+    final existingIndex =
+        _googleTracingInfoMarkers.indexWhere((m) => m.markerId.value == infoId);
+    if (existingIndex >= 0) {
+      _googleTracingInfoMarkers.removeAt(existingIndex);
     } else {
-      final polylines = <flutter_map.Polyline>[];
-      for (int i = 0; i < routeCoordinates.length; i++) {
-        polylines.add(
-          FlutterMapMarkerUtils.buildRouteTracingPolyline(
-              routeCoordinates[i], pathColor, i),
-        );
+      // Close any open info popup first
+      _googleTracingInfoMarkers.clear();
+      try {
+        final marker = kIsWeb
+            ? await WebMarkerUtils.buildTracingDotInfoMarker(
+                lat: lat,
+                lng: lng,
+                markerId: infoId,
+                time: time,
+                address: address,
+                isAvatar: isAvatar,
+                onClose: () => _googleTracingInfoMarkers
+                    .removeWhere((m) => m.markerId.value == infoId),
+              )
+            : await MobileMarkerUtils.buildTracingDotInfoMarker(
+                lat: lat,
+                lng: lng,
+                markerId: infoId,
+                time: time,
+                address: address,
+                isAvatar: isAvatar,
+                onClose: () => _googleTracingInfoMarkers
+                    .removeWhere((m) => m.markerId.value == infoId),
+              );
+        _googleTracingInfoMarkers.add(marker);
+      } catch (e) {
+        _log('Error creating tracing info marker: $e');
       }
-      _flutterDriverPathPolylines.assignAll(polylines);
     }
   }
 
@@ -882,10 +1154,10 @@ class GeoMapController extends GetxController {
           _processStopListMarkers(listResponse.list!);
         }
       } catch (e) {
-        print('Error parsing stop list: $e');
+        _log('Error parsing stop list: $e');
       }
     } else if (response != null) {
-      print('API Error loading stop list: ${response.message}');
+      _log('API Error loading stop list: ${response.message}');
     }
   }
 
@@ -955,7 +1227,7 @@ class GeoMapController extends GetxController {
 
   /// Create stop marker
   void _createStopMarker(PublicGeofencingModel item, int index) {
-    final color = MapColors.geofencingCenterMarker;
+    const color = MapColors.geofencingCenterMarker;
 
     if (config.mapType == GeoMapType.googleMap) {
       _createGoogleStopMarker(item, index, color);
@@ -980,13 +1252,13 @@ class GeoMapController extends GetxController {
               item, index, color, (item) {});
       _googleStopMarkers.add(marker);
     } catch (e) {
-      print('Error creating Google stop marker: $e');
+      _log('Error creating Google stop marker: $e');
     }
   }
 
   /// Create geofencing circle
   void _createGeofencingCircle(PublicGeofencingModel item, int index) {
-    final color = MapColors.geofencingCircle;
+    const color = MapColors.geofencingCircle;
 
     if (config.mapType == GeoMapType.googleMap) {
       final circle = kIsWeb
@@ -1016,7 +1288,7 @@ class GeoMapController extends GetxController {
 
   /// Load routes between consecutive stops
   Future<void> _loadRoutesBetweenStops() async {
-    print('Loading routes between stops. Stop count: ${_stopList.length}');
+    _log('Loading routes between stops. Stop count: ${_stopList.length}');
     if (_stopList.isEmpty) return;
 
     final List<Future<List<latlong.LatLng>?>> routeFutures = [];
@@ -1071,7 +1343,6 @@ class GeoMapController extends GetxController {
           .where((route) => route != null)
           .cast<List<latlong.LatLng>>()
           .toList();
-      _routeCoordinates.assignAll(validRoutes);
       _processRoutePolylines(validRoutes);
     }
   }
@@ -1109,7 +1380,7 @@ class GeoMapController extends GetxController {
         return coordinates;
       }
     } catch (e) {
-      print('Error fetching route: $e');
+      _log('Error fetching route: $e');
     }
     return null;
   }
@@ -1155,7 +1426,7 @@ class GeoMapController extends GetxController {
 
   /// Load check-in points and create markers
   Future<void> _loadCheckInMarkers() async {
-    print('Loading check-in markers: ${_stopList.length} items');
+    _log('Loading check-in markers: ${_stopList.length} items');
 
     _googleCheckInMarkers.clear();
     _flutterCheckInMarkers.clear();
@@ -1209,7 +1480,7 @@ class GeoMapController extends GetxController {
                 checkIn, (checkIn) => _handleCheckInMarkerClick(checkIn));
         _googleCheckInMarkers.add(marker);
       } catch (e) {
-        print('Error creating Google check-in marker: $e');
+        _log('Error creating Google check-in marker: $e');
       }
     } else {
       try {
@@ -1220,7 +1491,7 @@ class GeoMapController extends GetxController {
                 checkIn, (checkIn) => _handleCheckInMarkerClick(checkIn));
         _flutterCheckInMarkers.add(marker);
       } catch (e) {
-        print('Error creating Flutter check-in marker: $e');
+        _log('Error creating Flutter check-in marker: $e');
       }
     }
   }
@@ -1248,7 +1519,7 @@ class GeoMapController extends GetxController {
                   onClick: () => _handleCheckInInfoClose(checkIn));
           _googleCheckInInfoMarkers.add(marker);
         } catch (e) {
-          print('Error creating check-in info marker: $e');
+          _log('Error creating check-in info marker: $e');
         }
       }
     } else {
@@ -1269,7 +1540,7 @@ class GeoMapController extends GetxController {
                   onClick: () => _handleCheckInInfoClose(checkIn));
           _flutterCheckInInfoMarkers.add(marker);
         } catch (e) {
-          print('Error creating Flutter check-in info marker: $e');
+          _log('Error creating Flutter check-in info marker: $e');
         }
       }
     }
@@ -1338,11 +1609,26 @@ class GeoMapController extends GetxController {
     _zoom.value = 13.0;
   }
 
+  /// Move the camera to the driver's last known position.
+  /// The first item in [_driverTracingData.geoMapTracing] is the most recent location.
+  void moveToDriverLastLocation() {
+    final tracingData = _driverTracingData.value?.geoMapTracing;
+    if (tracingData == null || tracingData.isEmpty) return;
+
+    final latest = tracingData.first;
+    final coords = latest.object?.coordinates;
+    if (coords == null || coords.length < 2) return;
+
+    final lng = coords[0].toDouble();
+    final lat = coords[1].toDouble();
+    moveCameraTo(lat: lat, lng: lng, zoomLevel: 16);
+  }
+
   /// Start location tracking (Web Google Map specific)
   StreamSubscription<Position>? _positionStreamSubscription;
 
   Future<void> startWebLocationTracking() async {
-    print("Starting location tracking for Web Google Maps...");
+    _log("Starting location tracking for Web Google Maps...");
 
     LocationPermission permission;
 
@@ -1353,20 +1639,20 @@ class GeoMapController extends GetxController {
         permission = await Geolocator.requestPermission();
       }
     } catch (e) {
-      print('Error checking/requesting permission in tracking: $e');
+      _log('Error checking/requesting permission in tracking: $e');
     }
 
     // Determine position immediately to show marker
     try {
-        final position = await Geolocator.getCurrentPosition(
-           locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-        );
-        print("Error getting initial position: ${position.latitude}");
-        _updateCurrentLocationMarker(position);
-    } catch(e) {
-        print("Error getting initial position: $e");
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      _log("Error getting initial position: ${position.latitude}");
+      _updateCurrentLocationMarker(position);
+    } catch (e) {
+      _log("Error getting initial position: $e");
     }
-
 
     // Start stream
     const LocationSettings locationSettings = LocationSettings(
@@ -1376,42 +1662,46 @@ class GeoMapController extends GetxController {
 
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription =
-        Geolocator.getPositionStream(locationSettings: locationSettings)
-            .listen((Position position) {
-      print(
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+            (Position position) {
+      _log(
           'New location received: ${position.latitude}, ${position.longitude}');
       _updateCurrentLocationMarker(position);
     }, onError: (e) {
-       print('Error in location stream: $e');
+      _log('Error in location stream: $e');
     });
   }
 
   /// Move map to current location
   Future<void> moveToCurrentLocation() async {
-    print('moveToCurrentLocation: Called');
+    _log('moveToCurrentLocation: Called');
 
     // First, try to use the cached position if available (most reliable)
     if (_lastKnownPosition != null) {
-      print('moveToCurrentLocation: Using cached position ${_lastKnownPosition!.latitude}, ${_lastKnownPosition!.longitude}');
-      _moveCameraToPosition(_lastKnownPosition!.latitude, _lastKnownPosition!.longitude);
+      _log(
+          'moveToCurrentLocation: Using cached position ${_lastKnownPosition!.latitude}, ${_lastKnownPosition!.longitude}');
+      _moveCameraToPosition(
+          _lastKnownPosition!.latitude, _lastKnownPosition!.longitude);
       return;
     }
 
     // Fallback: Try to get current position directly
     try {
-      print('moveToCurrentLocation: Getting current position...');
+      _log('moveToCurrentLocation: Getting current position...');
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.low,
           timeLimit: Duration(seconds: 5),
         ),
       );
-      print('moveToCurrentLocation: Got position ${position.latitude}, ${position.longitude}');
+      _log(
+          'moveToCurrentLocation: Got position ${position.latitude}, ${position.longitude}');
       _moveCameraToPosition(position.latitude, position.longitude);
       _updateCurrentLocationMarker(position);
     } catch (e) {
-      print('Error moving to current location: $e');
-      print('Tip: Make sure location tracking is started and has received at least one position update.');
+      _log('Error moving to current location: $e');
+      _log(
+          'Tip: Make sure location tracking is started and has received at least one position update.');
     }
   }
 
@@ -1425,9 +1715,9 @@ class GeoMapController extends GetxController {
           15.0,
         ),
       );
-      print('moveToCurrentLocation: Camera animated to $lat, $lng');
+      _log('moveToCurrentLocation: Camera animated to $lat, $lng');
     } else {
-      print('moveToCurrentLocation: GoogleMapController is null');
+      _log('moveToCurrentLocation: GoogleMapController is null');
     }
     updateMap(latlong.LatLng(lat, lng), 15.0);
   }
@@ -1444,10 +1734,11 @@ class GeoMapController extends GetxController {
           lng: position.longitude,
         );
         _googleCurrentLocationMarker.value = marker;
-        print('Success updating current location marker: ${position.latitude} ${position.longitude}');
+        _log(
+            'Success updating current location marker: ${position.latitude} ${position.longitude}');
       }
     } catch (e) {
-      print('Error updating current location marker: $e');
+      _log('Error updating current location marker: $e');
     }
   }
 
@@ -1458,13 +1749,6 @@ class GeoMapController extends GetxController {
     _googleCurrentLocationMarker.value = null; // Also clear marker
   }
 
-
-
-  /// Process the geomap detail (backward compatibility)
-  void processMapGeoDetail(MapGeoModel detail) {
-    print('Processed map geo detail');
-  }
-
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 20: DEBUG & SIMULATION
   // ════════════════════════════════════════════════════════════════════════════
@@ -1473,7 +1757,7 @@ class GeoMapController extends GetxController {
 
   /// Start a simulation of user movement for testing
   void startSimulation() {
-    print('Starting location simulation...');
+    _log('Starting location simulation...');
     stopLocationTracking(); // Stop real tracking to avoid conflict
 
     final startLat = _center.value.latitude;
@@ -1481,7 +1765,7 @@ class GeoMapController extends GetxController {
 
     // Create a simple path: moving North-East
     final List<latlong.LatLng> mockPath = [];
-     for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 20; i++) {
       mockPath.add(latlong.LatLng(
         startLat + (i * 0.0005),
         startLng + (i * 0.0005),
@@ -1510,7 +1794,7 @@ class GeoMapController extends GetxController {
         isMocked: true,
       );
 
-      print('Simulating position: ${point.latitude}, ${point.longitude}');
+      _log('Simulating position: ${point.latitude}, ${point.longitude}');
       _updateCurrentLocationMarker(position);
 
       // Optional: keep camera focused on user
@@ -1524,7 +1808,7 @@ class GeoMapController extends GetxController {
 
   /// Stop the simulation
   void stopSimulation() {
-    print('Stopping location simulation');
+    _log('Stopping location simulation');
     _simulationTimer?.cancel();
     _simulationTimer = null;
   }

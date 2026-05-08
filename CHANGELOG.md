@@ -1,3 +1,17 @@
+## 2.1.0
+
+### Added
+* **UI Customization**: Thêm `infoCardModel` và `driverInfoCardModel` vào `GeoMapPublic` cho phép tùy chỉnh thông tin hiển thị trên các thẻ.
+* **Multi-day Tracking**: Hỗ trợ chọn xem lịch sử di chuyển theo từng ngày thông qua dropdown mới.
+* **Enhanced Data Models**: Bổ sung các thông tin `address`, `time`, `plate`, và `phone` cho model `UserJoinGeoMap`.
+* **Extended Map Features**: Thêm hỗ trợ cho các trường dữ liệu mới trong `MapGeoModel` như `isReturn`, `totalGeofencing`, và `listDetectTracing`.
+
+### Improved
+* **New Design**: Cập nhật giao diện mới hiện đại hơn cho toàn bộ gói GeoMap trên cả Mobile và Web.
+* **Marker Rendering**: Cải thiện hiệu suất và cách hiển thị marker trên bản đồ.
+* **UI Components**: Thiết kế lại các thành phần `GeoMapDriverInfoCard`, `GeoMapStatusCard` và `GeoMapCollapsedTimeline`.
+* **API Handling**: Tối ưu hóa việc gọi API tracking thông qua `datasetCode` ổn định hơn.
+
 ## 2.0.0
 
 ### BREAKING CHANGES

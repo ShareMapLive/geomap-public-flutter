@@ -1,4 +1,5 @@
 /// Model for geofencing data (points, polygons, etc.)
+library;
 
 import 'dart:convert';
 
@@ -24,7 +25,7 @@ class PointData {
     point = json['point'] != null
         ? List<double>.from(json['point'].map((x) => x.toDouble()))
         : [];
-    
+
     // Parse userCheckIn similar to PublicGeofencingModel
     // Handle both formats:
     // 1. Empty object: "userCheckIn": {}
@@ -32,25 +33,28 @@ class PointData {
     userCheckIn = json['userCheckIn'] != null
         ? () {
             final dynamic checkInJson = json['userCheckIn'];
-            if (checkInJson is Map<String, dynamic> || checkInJson is Map<dynamic, dynamic>) {
+            if (checkInJson is Map<String, dynamic> ||
+                checkInJson is Map<dynamic, dynamic>) {
               final map = Map<String, dynamic>.from(checkInJson);
-              
+
               // Check if it's an empty object
               if (map.isEmpty) {
                 return null;
               }
-              
+
               // Check if it has direct keys like 'lat', 'lng', or 'userJoinGeoMapUuid'
-              if (map.containsKey('lat') || map.containsKey('userJoinGeoMapUuid')) {
+              if (map.containsKey('lat') ||
+                  map.containsKey('userJoinGeoMapUuid')) {
                 return UserCheckIn.fromJson(map);
               }
-              
+
               // Otherwise, check if it contains nested objects keyed by UUID
               // We take the first value that looks like a check-in
               if (map.isNotEmpty) {
                 final firstValue = map.values.first;
                 if (firstValue is Map) {
-                  return UserCheckIn.fromJson(Map<String, dynamic>.from(firstValue));
+                  return UserCheckIn.fromJson(
+                      Map<String, dynamic>.from(firstValue));
                 }
               }
             }
@@ -77,8 +81,6 @@ class PointData {
     return map;
   }
 }
-
-
 
 class PublicGeofencingModel {
   PublicGeofencingModel({
@@ -195,62 +197,62 @@ class PublicGeofencingModel {
         lat: json["lat"] != null && json["lat"].toString().isNotEmpty
             ? json["lat"]
             : null,
-      userCheckIn: json["userCheckIn"] != null
-          ? () {
-              // userCheckIn structure from server is:
-              // "userCheckIn": { "UUID_STRING": { "userJoinGeoMapUuid": "...", ... } }
-              // or potentially just directly the object if structure changes.
-              // Based on user log: "userCheckIn":{"VITLEn04FlhLZLAlxtdVPx2fKyG3":{...}}
-              
-              final dynamic checkInJson = json["userCheckIn"];
-              if (checkInJson is Map<String, dynamic> || checkInJson is Map<dynamic, dynamic>) {
-                 final map = Map<String, dynamic>.from(checkInJson);
-                 
-                 // Check if it has direct keys like 'lat', 'lng'
-                 if (map.containsKey('lat') || map.containsKey('userJoinGeoMapUuid')) {
-                   return UserCheckIn.fromJson(map);
-                 }
-                 
-                 // Otherwise, check if it contains nested objects keyed by UUID
-                 // We take the first value that looks like a checkin
-                 if (map.isNotEmpty) {
+        userCheckIn: json["userCheckIn"] != null
+            ? () {
+                // userCheckIn structure from server is:
+                // "userCheckIn": { "UUID_STRING": { "userJoinGeoMapUuid": "...", ... } }
+                // or potentially just directly the object if structure changes.
+                // Based on user log: "userCheckIn":{"VITLEn04FlhLZLAlxtdVPx2fKyG3":{...}}
+
+                final dynamic checkInJson = json["userCheckIn"];
+                if (checkInJson is Map<String, dynamic> ||
+                    checkInJson is Map<dynamic, dynamic>) {
+                  final map = Map<String, dynamic>.from(checkInJson);
+
+                  // Check if it has direct keys like 'lat', 'lng'
+                  if (map.containsKey('lat') ||
+                      map.containsKey('userJoinGeoMapUuid')) {
+                    return UserCheckIn.fromJson(map);
+                  }
+
+                  // Otherwise, check if it contains nested objects keyed by UUID
+                  // We take the first value that looks like a checkin
+                  if (map.isNotEmpty) {
                     final firstValue = map.values.first;
                     if (firstValue is Map) {
-                       return UserCheckIn.fromJson(Map<String, dynamic>.from(firstValue));
+                      return UserCheckIn.fromJson(
+                          Map<String, dynamic>.from(firstValue));
                     }
-                 }
-              }
-              return null;
-            }()
-          : null,
+                  }
+                }
+                return null;
+              }()
+            : null,
       );
-
-
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
-        "lng": lng,
-        "polygon": polygon != null
-            ? List<dynamic>.from(
-                polygon!.map((x) => List<dynamic>.from(x.map((x) => x))))
-            : [],
-        "data": data != null
-            ? List<dynamic>.from(data!.map((x) => x.toJson()))
-            : [],
-        "sort": sort,
-        "geoMapCode": geoMapCode,
-        "businessId": businessId,
-        "searchKey": searchKey,
-        "linkWebhook": linkWebhook,
-        "title": title,
-        "address": address,
-        "uuid": uuid,
-        "geohash": geohash,
-        "name": name,
-        "radius": radius,
-        "projectId": projectId,
-        "lat": lat,
-        "detect": detect,
+      "lng": lng,
+      "polygon": polygon != null
+          ? List<dynamic>.from(
+              polygon!.map((x) => List<dynamic>.from(x.map((x) => x))))
+          : [],
+      "data":
+          data != null ? List<dynamic>.from(data!.map((x) => x.toJson())) : [],
+      "sort": sort,
+      "geoMapCode": geoMapCode,
+      "businessId": businessId,
+      "searchKey": searchKey,
+      "linkWebhook": linkWebhook,
+      "title": title,
+      "address": address,
+      "uuid": uuid,
+      "geohash": geohash,
+      "name": name,
+      "radius": radius,
+      "projectId": projectId,
+      "lat": lat,
+      "detect": detect,
     };
     if (userCheckIn != null) {
       // Wrap userCheckIn in a map keyed by uuid if necessary?

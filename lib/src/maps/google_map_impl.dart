@@ -70,6 +70,7 @@ class GoogleMapImpl extends StatelessWidget {
             tiltGesturesEnabled: rotateGesturesEnabled,
             compassEnabled: compassEnabled,
             mapToolbarEnabled: mapToolbarEnabled,
+            webGestureHandling: WebGestureHandling.greedy,
             onCameraMove: (cameraPosition) {
               controller.updateMap(
                 latlong.LatLng(
@@ -88,16 +89,19 @@ class GoogleMapImpl extends StatelessWidget {
               ...controller.googleMapsUserCheckInMarkers.toSet(),
               // User check-in info markers
               ...controller.googleMapsInfoUserCheckInMarkers.toSet(),
+              // Tracing path dot markers (green dots)
+              ...controller.googleTracingDotMarkers.toSet(),
+              // Tracing dot info popups
+              ...controller.googleTracingInfoMarkers.toSet(),
               if (controller.googleCurrentLocationMarker != null)
                 controller.googleCurrentLocationMarker!,
             },
             circles: controller.googleMapsCircles.toSet(),
             polygons: controller.googleMapsPolygons.toSet(),
             polylines: {
-              // Regular polylines
+              // Regular route polylines between stops
               ...controller.googleMapsPolylines.toSet(),
-              // Tracing polylines
-              ...controller.googleMapsTracingPolylines.toSet(),
+              // Note: tracing polylines are now replaced by dot markers above
             },
           );
         }),

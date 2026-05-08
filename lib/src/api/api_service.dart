@@ -22,15 +22,20 @@ class ApiService extends GetxService {
   /// Route service key for route API requests
   String? _routeServiceKey;
 
+  /// Whether to show logs
+  bool _showLogs = false;
+
   /// Initialize the API service with the specified environment
   Future<ApiService> init({
     Environment environment = Environment.development,
     String? apiKey,
     String? routeServiceKey,
     String? baseUrl,
+    bool showLogs = false,
   }) async {
     _apiKey = apiKey;
     _routeServiceKey = routeServiceKey;
+    _showLogs = showLogs;
     _endpoints = ApiEndpoints(environment, customBaseUrl: baseUrl);
     return this;
   }
@@ -47,7 +52,7 @@ class ApiService extends GetxService {
     };
 
     // Add API key authentication if available
-    if (_apiKey != null && _apiKey!.isNotEmpty&&needKey) {
+    if (_apiKey != null && _apiKey!.isNotEmpty && needKey) {
       headers['x-public-map-key'] = _apiKey!;
     }
 
@@ -56,7 +61,14 @@ class ApiService extends GetxService {
 
   /// Log response body
   void _logResponseBody(String responseBody, String apiURL) {
-    print('_TAG: Response for API: $apiURL:\n$responseBody');
+    _log('_TAG: Response for API: $apiURL:\n$responseBody');
+  }
+
+  /// Internal logger
+  void _log(String message) {
+    if (_showLogs) {
+      debugPrint(message);
+    }
   }
 
   /// Call GET API with authentication
@@ -72,8 +84,8 @@ class ApiService extends GetxService {
     final ApiService service = Get.find<ApiService>();
     Map<String, String> headers = service._modifyHeaders(true);
 
-    print('_TAG: HttpURL: $httpUrl');
-    print('_TAG: Headers: $headers');
+    service._log('_TAG: HttpURL: $httpUrl');
+    service._log('_TAG: Headers: $headers');
 
     final response = await http.get(url, headers: headers);
 
@@ -98,26 +110,27 @@ class ApiService extends GetxService {
     Map<String, String> headers = service._modifyHeaders(false);
 
     // Add the specific sharemap-service-key header for route API if available
-    if (service._routeServiceKey != null && service._routeServiceKey!.isNotEmpty) {
+    if (service._routeServiceKey != null &&
+        service._routeServiceKey!.isNotEmpty) {
       headers['sharemap-service-key'] = service._routeServiceKey!;
     }
 
-    print('_TAG: Route HttpURL: $httpUrl');
-    print('_TAG: Route Headers: $headers');
+    service._log('_TAG: Route HttpURL: $httpUrl');
+    service._log('_TAG: Route Headers: $headers');
 
     final response = await http.get(url, headers: headers);
-    print('_TAG: Route API Response Status: ${response.statusCode}');
+    service._log('_TAG: Route API Response Status: ${response.statusCode}');
 
     if (log) {
-      print('_TAG: Route Response for API: $httpUrl:\n${response.body}');
+      service._log('_TAG: Route Response for API: $httpUrl:\n${response.body}');
     }
 
     try {
       final Map<String, dynamic> jsonMap = json.decode(response.body);
-      print('_TAG: Parsed route response with keys: ${jsonMap.keys}');
+      service._log('_TAG: Parsed route response with keys: ${jsonMap.keys}');
       return RouteModel.fromJson(jsonMap);
     } catch (e) {
-      print('Error parsing route response: $e');
+      service._log('Error parsing route response: $e');
       return null;
     }
   }
@@ -131,9 +144,9 @@ class ApiService extends GetxService {
     final ApiService service = Get.find<ApiService>();
     Map<String, String> headers = service._modifyHeaders(true);
 
-    print('_TAG: HttpURL: $httpUrl');
-    print('_TAG: JSON Body: $jsonBody');
-    print('_TAG: Headers: $headers');
+    service._log('_TAG: HttpURL: $httpUrl');
+    service._log('_TAG: JSON Body: $jsonBody');
+    service._log('_TAG: Headers: $headers');
 
     final response = await http.post(url, headers: headers, body: jsonBody);
     service._logResponseBody(response.body, httpUrl);
@@ -145,11 +158,15 @@ class ApiService extends GetxService {
 
   /// Parse response in background isolate
   static ApiResponse? _parseInBackground(String responseBody) {
+    // Get the service instance to access _log
+    final ApiService? service =
+        Get.isRegistered<ApiService>() ? Get.find<ApiService>() : null;
+
     try {
       final Map<String, dynamic> jsonMap = json.decode(responseBody);
       return ApiResponse.fromJson(jsonMap);
     } catch (e) {
-      print('Error parsing response: $e');
+      service?._log('Error parsing response: $e');
       return null;
     }
   }
@@ -166,11 +183,11 @@ class ApiService extends GetxService {
           return MapGeoModel.fromJson(response.data);
         }
       } else if (response != null) {
-        print('API Error: ${response.message}, Code: ${response.code}');
+        _log('API Error: ${response.message}, Code: ${response.code}');
       }
       return null;
     } catch (e) {
-      print('Error fetching geomap details: $e');
+      _log('Error fetching geomap details: $e');
       return null;
     }
   }
@@ -187,11 +204,12 @@ class ApiService extends GetxService {
           return DatasetModel.fromJson(response.data);
         }
       } else if (response != null) {
-        print('API Error getDatasetDetail: ${response.message}, Code: ${response.code}');
+        _log(
+            'API Error getDatasetDetail: ${response.message}, Code: ${response.code}');
       }
       return null;
     } catch (e) {
-      print('Error fetching dataset detail: $e');
+      _log('Error fetching dataset detail: $e');
       return null;
     }
   }
@@ -242,11 +260,12 @@ class ApiService extends GetxService {
           return listTracingModel;
         }
       } else if (response != null) {
-        print('API Error getDatasetTrackingListByTimeRange: ${response.message}, Code: ${response.code}');
+        _log(
+            'API Error getDatasetTrackingListByTimeRange: ${response.message}, Code: ${response.code}');
       }
       return null;
     } catch (e) {
-      print('Error fetching dataset tracking list: $e');
+      _log('Error fetching dataset tracking list: $e');
       return null;
     }
   }
@@ -265,7 +284,7 @@ class ApiService extends GetxService {
 
       return response;
     } catch (e) {
-      print('Error fetching public geofencing list: $e');
+      _log('Error fetching public geofencing list: $e');
       return null;
     }
   }
@@ -276,10 +295,10 @@ class ApiService extends GetxService {
     try {
       final url =
           '${ApiEndpoints.routeServiceUrl}/route/v1/driving/$startLng,$startLat;$endLng,$endLat?overview=false&alternatives=false&steps=true';
-      print('Calling route API: $url');
+      _log('Calling route API: $url');
       return await _callGetRouteAPI(httpUrl: url);
     } catch (e) {
-      print('Error fetching route data: $e');
+      _log('Error fetching route data: $e');
       return null;
     }
   }
@@ -310,7 +329,7 @@ class ApiService extends GetxService {
 
       return response;
     } catch (e) {
-      print('Error fetching public geofencing polygon: $e');
+      _log('Error fetching public geofencing polygon: $e');
       return null;
     }
   }

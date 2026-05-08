@@ -23,7 +23,8 @@ class ListTracingModel {
       total: json['total'] as int?,
       geoMapTracing: tracingData != null
           ? (tracingData as List)
-              .map((item) => TracingModel.fromJson(item as Map<String, dynamic>))
+              .map(
+                  (item) => TracingModel.fromJson(item as Map<String, dynamic>))
               .toList()
           : null,
       geoMap: json['geoMap'] != null
@@ -38,7 +39,8 @@ class ListTracingModel {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['total'] = total;
     if (geoMapTracing != null) {
-      data['DatasetTracking'] = geoMapTracing!.map((item) => item.toJson()).toList();
+      data['DatasetTracking'] =
+          geoMapTracing!.map((item) => item.toJson()).toList();
     }
     if (geoMap != null) {
       data['geoMap'] = geoMap!.toJson();

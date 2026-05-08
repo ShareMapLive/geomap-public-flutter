@@ -1,6 +1,6 @@
 name: geomap_package
 description: A Flutter package for displaying geomaps with Google Maps and Flutter Map, supporting both mobile and web platforms with GetX state management.
-version: 2.0.0
+version: 2.1.0
 homepage: https://github.com/ShareMapLive/geomap-public-flutter
 
 environment:

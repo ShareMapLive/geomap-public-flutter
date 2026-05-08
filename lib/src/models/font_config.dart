@@ -38,7 +38,8 @@ class FontConfig {
   String get fontFamily => kIsWeb ? webFontFamily : mobileFontFamily;
 
   /// Create a TextStyle for titles
-  TextStyle titleStyle({Color? color, FontWeight? fontWeight, double? fontSize}) {
+  TextStyle titleStyle(
+      {Color? color, FontWeight? fontWeight, double? fontSize}) {
     return TextStyle(
       fontFamily: fontFamily,
       fontSize: fontSize ?? titleFontSize,
@@ -48,7 +49,8 @@ class FontConfig {
   }
 
   /// Create a TextStyle for subtitles
-  TextStyle subtitleStyle({Color? color, FontWeight? fontWeight, double? fontSize}) {
+  TextStyle subtitleStyle(
+      {Color? color, FontWeight? fontWeight, double? fontSize}) {
     return TextStyle(
       fontFamily: fontFamily,
       fontSize: fontSize ?? subtitleFontSize,
@@ -58,7 +60,8 @@ class FontConfig {
   }
 
   /// Create a TextStyle for body text
-  TextStyle bodyStyle({Color? color, FontWeight? fontWeight, double? fontSize}) {
+  TextStyle bodyStyle(
+      {Color? color, FontWeight? fontWeight, double? fontSize}) {
     return TextStyle(
       fontFamily: fontFamily,
       fontSize: fontSize ?? bodyFontSize,
