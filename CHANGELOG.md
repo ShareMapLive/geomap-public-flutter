@@ -1,3 +1,8 @@
+## 2.1.1
+
+### Added
+* **Dynamic Public URL**: Hỗ trợ tự động lấy URL từ trình duyệt trên nền tảng Web và bổ sung `publicBaseUrl` vào `GeoMapConfig` để tùy chỉnh linh hoạt.
+
 ## 2.1.0
 
 ### Added
