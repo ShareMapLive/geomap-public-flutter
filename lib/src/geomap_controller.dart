@@ -267,16 +267,17 @@ class GeoMapController extends GetxController {
   // ════════════════════════════════════════════════════════════════════════════
 
   /// Gets the public geomap URL based on environment and config.
-  /// On Web, it tries to use the current browser origin.
+  /// On Web, it returns the exact current URL from the browser.
   String getPublicGeoMapUrl(String geoMapCode) {
-    String baseUrl;
+    // If running on web, return the exact current browser URL
+    if (kIsWeb) {
+      return Uri.base.toString();
+    }
 
+    String baseUrl;
     // Use explicit override if provided in config
     if (config.publicBaseUrl != null && config.publicBaseUrl!.isNotEmpty) {
       baseUrl = config.publicBaseUrl!;
-    } else if (kIsWeb) {
-      // Use the current browser origin if running on web
-      baseUrl = Uri.base.origin;
     } else {
       // Fallback for mobile or non-web platforms
       final isDev = config.environment == Environment.development;
