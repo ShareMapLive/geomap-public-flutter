@@ -266,12 +266,25 @@ class GeoMapController extends GetxController {
   // SECTION 6: LINK CARD - Public geomap URL
   // ════════════════════════════════════════════════════════════════════════════
 
-  /// Gets the public geomap URL based on environment and config
+  /// Gets the public geomap URL based on environment and config.
+  /// On Web, it tries to use the current browser origin.
   String getPublicGeoMapUrl(String geoMapCode) {
-    final isDev = config.environment == Environment.development;
-    final baseUrl = isDev
-        ? 'https://dev-public-sharemap.web.app'
-        : 'https://map.sharemap.live';
+    String baseUrl;
+
+    // Use explicit override if provided in config
+    if (config.publicBaseUrl != null && config.publicBaseUrl!.isNotEmpty) {
+      baseUrl = config.publicBaseUrl!;
+    } else if (kIsWeb) {
+      // Use the current browser origin if running on web
+      baseUrl = Uri.base.origin;
+    } else {
+      // Fallback for mobile or non-web platforms
+      final isDev = config.environment == Environment.development;
+      baseUrl = isDev
+          ? 'https://dev-public-sharemap.web.app'
+          : 'https://public-sharemap.web.live';
+    }
+
     final token = _cleanApiKey;
 
     String url = '$baseUrl/public-geomap/$geoMapCode?token=$token';

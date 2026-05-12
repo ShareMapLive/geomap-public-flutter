@@ -37,6 +37,10 @@ class GeoMapConfig {
   /// Optional base URL for production API requests.
   final String? prodApiUrl;
 
+  /// Optional base URL for public geomap links (e.g., https://map.sharemap.live).
+  /// If provided, this will be used for generated links.
+  final String? publicBaseUrl;
+
   /// Whether to enable internal package logging (useful for debugging).
   /// Defaults to false.
   final bool showLogs;
@@ -50,6 +54,7 @@ class GeoMapConfig {
   /// [role] determines the UI features and data loading (defaults to viewer)
   /// [devApiUrl] allows overriding the default development API base URL
   /// [prodApiUrl] allows overriding the default production API base URL
+  /// [publicBaseUrl] allows overriding the base URL for public links
   const GeoMapConfig({
     required this.apiKey,
     this.routeServiceKey,
@@ -59,6 +64,7 @@ class GeoMapConfig {
     this.role = GeoMapRole.viewer,
     this.devApiUrl,
     this.prodApiUrl,
+    this.publicBaseUrl,
     this.showLogs = false,
   });
 
@@ -74,6 +80,7 @@ class GeoMapConfig {
         other.role == role &&
         other.devApiUrl == devApiUrl &&
         other.prodApiUrl == prodApiUrl &&
+        other.publicBaseUrl == publicBaseUrl &&
         other.showLogs == showLogs;
   }
 
@@ -87,9 +94,10 @@ class GeoMapConfig {
       role.hashCode ^
       devApiUrl.hashCode ^
       prodApiUrl.hashCode ^
+      publicBaseUrl.hashCode ^
       showLogs.hashCode;
 
   @override
   String toString() =>
-      'GeoMapConfig(apiKey: $apiKey, routeServiceKey: $routeServiceKey, mapType: $mapType, fontConfig: $fontConfig, role: $role, devApiUrl: $devApiUrl, prodApiUrl: $prodApiUrl, showLogs: $showLogs)';
+      'GeoMapConfig(apiKey: $apiKey, routeServiceKey: $routeServiceKey, mapType: $mapType, fontConfig: $fontConfig, role: $role, devApiUrl: $devApiUrl, prodApiUrl: $prodApiUrl, publicBaseUrl: $publicBaseUrl, showLogs: $showLogs)';
 }
