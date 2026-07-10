@@ -25,6 +25,7 @@ import 'utils/google_map_marker_utils.dart';
 import 'utils/map_colors.dart';
 import 'utils/mobile_marker_utils.dart';
 import 'utils/web_marker_utils.dart';
+import 'utils/emoji_font_loader.dart';
 
 /// Controller for managing the geomap state and interactions.
 ///
@@ -266,12 +267,26 @@ class GeoMapController extends GetxController {
   // SECTION 6: LINK CARD - Public geomap URL
   // ════════════════════════════════════════════════════════════════════════════
 
-  /// Gets the public geomap URL based on environment and config
+  /// Gets the public geomap URL based on environment and config.
+  /// On Web, it returns the exact current URL from the browser.
   String getPublicGeoMapUrl(String geoMapCode) {
-    final isDev = config.environment == Environment.development;
-    final baseUrl = isDev
-        ? 'https://dev-public-sharemap.web.app'
-        : 'https://map.sharemap.live';
+    // If running on web, return the exact current browser URL
+    if (kIsWeb) {
+      return Uri.base.toString();
+    }
+
+    String baseUrl;
+    // Use explicit override if provided in config
+    if (config.publicBaseUrl != null && config.publicBaseUrl!.isNotEmpty) {
+      baseUrl = config.publicBaseUrl!;
+    } else {
+      // Fallback for mobile or non-web platforms
+      final isDev = config.environment == Environment.development;
+      baseUrl = isDev
+          ? 'https://dev-public-sharemap.web.app'
+          : 'https://public-sharemap.web.live';
+    }
+
     final token = _cleanApiKey;
 
     String url = '$baseUrl/public-geomap/$geoMapCode?token=$token';
@@ -527,6 +542,9 @@ class GeoMapController extends GetxController {
             baseUrl: customBaseUrl,
             showLogs: config.showLogs,
           ));
+
+      // Pre-load emoji font in background so it's ready when markers are drawn
+      unawaited(EmojiFontLoader.ensureLoaded());
     } catch (e) {
       _log('Error initializing GeoMapController: $e');
     } finally {

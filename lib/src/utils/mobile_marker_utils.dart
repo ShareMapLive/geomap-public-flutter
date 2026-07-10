@@ -11,6 +11,7 @@ import '../models/geofencing_model.dart';
 import '../models/tracing_model.dart';
 import 'map_colors.dart';
 import 'marker_z_indexes.dart';
+import 'emoji_font_loader.dart';
 
 const double textSizeSMedium = 14.0;
 const double textSizeSmall = 12.0;
@@ -23,6 +24,10 @@ class MobileMarkerUtils {
     TrackingVehicleConfiguration? trackingConfig,
     Function(UserJoinGeoMap) onClick,
   ) async {
+    if (trackingConfig?.typeAvatarOption == "emoji") {
+      await EmojiFontLoader.ensureLoaded();
+    }
+
     // Create a larger widget for mobile
     final widget = _buildMarkerStackWidget(
       name: userLocationModel.name,
@@ -147,6 +152,7 @@ class MobileMarkerUtils {
         ],
       );
     } else if (trackingConfig?.typeAvatarOption == "emoji") {
+      EmojiFontLoader.ensureLoaded();
       // Emoji-based marker
       return SizedBox(
         height: 30,
