@@ -25,6 +25,7 @@ import 'utils/google_map_marker_utils.dart';
 import 'utils/map_colors.dart';
 import 'utils/mobile_marker_utils.dart';
 import 'utils/web_marker_utils.dart';
+import 'utils/emoji_font_loader.dart';
 
 /// Controller for managing the geomap state and interactions.
 ///
@@ -541,6 +542,9 @@ class GeoMapController extends GetxController {
             baseUrl: customBaseUrl,
             showLogs: config.showLogs,
           ));
+
+      // Pre-load emoji font in background so it's ready when markers are drawn
+      unawaited(EmojiFontLoader.ensureLoaded());
     } catch (e) {
       _log('Error initializing GeoMapController: $e');
     } finally {

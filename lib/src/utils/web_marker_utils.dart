@@ -12,6 +12,7 @@ import '../models/tracing_model.dart';
 import 'map_colors.dart';
 import 'marker_z_indexes.dart';
 import 'triangle_painter.dart';
+import 'emoji_font_loader.dart';
 
 const double textSizeSMedium = 14.0;
 const double textSizeSmall = 12.0;
@@ -77,6 +78,10 @@ class WebMarkerUtils {
     TrackingVehicleConfiguration? trackingConfig,
     Function(UserJoinGeoMap) onClick,
   ) async {
+    if (trackingConfig?.typeAvatarOption == "emoji") {
+      await EmojiFontLoader.ensureLoaded();
+    }
+
     // Create a smaller widget for web
     final widget = _buildMarkerStackWidget(
       name: userLocationModel.name,
@@ -194,6 +199,7 @@ class WebMarkerUtils {
         ],
       );
     } else if (trackingConfig?.typeAvatarOption == "emoji") {
+      EmojiFontLoader.ensureLoaded();
       return SizedBox(
         height: 30,
         width: 30,
